@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background matching app: #080410 -->
+  <rect width="512" height="512" rx="80" fill="#080410"/>
+
+  <!-- Subtle radial glow behind glass -->
+  <radialGradient id="glow" cx="50%" cy="45%" r="40%">
+    <stop offset="0%" stop-color="#C9A84C" stop-opacity="0.15"/>
+    <stop offset="100%" stop-color="#080410" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="512" height="512" rx="80" fill="url(#glow)"/>
+
+  <!-- Gold gradient for glass -->
+  <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#F0D080"/>
+    <stop offset="50%" stop-color="#D4B458"/>
+    <stop offset="100%" stop-color="#A8883A"/>
+  </linearGradient>
+
+  <!-- Wine fill gradient (deep red) -->
+  <linearGradient id="wineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+    <stop offset="0%" stop-color="#A03348" stop-opacity="0.9"/>
+    <stop offset="100%" stop-color="#5A1020" stop-opacity="0.95"/>
+  </linearGradient>
+
+  <!-- Glass bowl outline -->
+  <!-- The bowl is a rounded trapezoid shape -->
+  <path d="
+    M 172 110
+    Q 168 200 185 260
+    Q 210 330 256 345
+    Q 302 330 327 260
+    Q 344 200 340 110
+    Z
+  " fill="none" stroke="url(#goldGrad)" stroke-width="10" stroke-linejoin="round"/>
+
+  <!-- Wine fill inside bowl (clipped to bowl shape) -->
+  <clipPath id="bowlClip">
+    <path d="
+      M 175 110
+      Q 171 200 188 258
+      Q 213 328 256 343
+      Q 299 328 324 258
+      Q 341 200 337 110
+      Z
+    "/>
+  </clipPath>
+  <rect x="160" y="230" width="196" height="120" fill="url(#wineGrad)" clip-path="url(#bowlClip)"/>
+
+  <!-- Wine surface sheen -->
+  <ellipse cx="256" cy="232" rx="68" ry="8" fill="#C04060" opacity="0.5"/>
+
+  <!-- Stem -->
+  <line x1="256" y1="345" x2="256" y2="420" stroke="url(#goldGrad)" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Base -->
+  <path d="M 185 420 Q 256 408 327 420" fill="none" stroke="url(#goldGrad)" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- YD monogram at base -->
+  <text x="256" y="415" font-family="Georgia, serif" font-size="52" font-weight="600" fill="url(#goldGrad)" text-anchor="middle" letter-spacing="4">YD</text>
+
+  <!-- Highlight on glass left side -->
+  <path d="M 188 130 Q 182 190 192 245" fill="none" stroke="#F0D080" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+</svg>
