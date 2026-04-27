@@ -1109,6 +1109,15 @@ tbody tr:hover td.actions { opacity: 1; }
   letter-spacing: 0.08em;
 }
 .tg-year.now { color: var(--gold-deep); font-weight: 600; }
+#tgTooltip {
+  position: fixed; pointer-events: none; z-index: 9999;
+  background: var(--ink); color: var(--ivory);
+  border: 1px solid rgba(156,124,56,0.5);
+  font-family: 'Cormorant Garamond', serif; font-size: 0.82rem;
+  padding: 7px 11px; line-height: 1.6;
+  opacity: 0; transition: opacity 0.12s; white-space: nowrap;
+}
+#tgTooltip.visible { opacity: 1; }
 
 /* ════════════════════════════════════════════════════════════
    CONFIRM / TOAST
@@ -2301,7 +2310,12 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
       </div>
 
       <div class="chart-panel" style="margin-top:16px">
-        <p class="chart-label">Fenêtres de dégustation</p>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:10px">
+          <p class="chart-label" style="margin-bottom:0">Fenêtres de dégustation</p>
+          <input id="timelineSearch" type="search" placeholder="Filtrer par nom…"
+            style="font-family:'Cormorant Garamond',serif;font-size:0.82rem;border:none;border-bottom:1px solid var(--hairline);background:transparent;color:var(--ink);padding:2px 6px;width:180px;outline:none"
+            oninput="filterTimeline(this.value)">
+        </div>
         <div style="overflow-x:auto;width:100%">
           <div id="aTimeline" style="display:grid;gap:1px;font-size:0.6rem;width:100%;min-width:700px"></div>
         </div>
@@ -4256,15 +4270,43 @@ function renderAnalyses() {
   // ── 7. Drinking window timeline ──────────────────────────────────────────
   const startYear = currentYear - 1;
   const endYear = currentYear + 20;
-  const years = Array.from({length: endYear - startYear + 1}, (_, i) => startYear + i);
-
-  const windowWines = ws
-    .filter(w => w.drinkFrom && w.drinkTo)
-    .sort((a,b) => a.drinkFrom - b.drinkFrom);
+  _timelineYears = Array.from({length: endYear - startYear + 1}, (_, i) => startYear + i);
+  _timelineWines = ws.filter(w => w.drinkFrom && w.drinkTo).sort((a,b) => a.drinkFrom - b.drinkFrom);
 
   const tg = document.getElementById('aTimeline');
+  tg.style.gridTemplateColumns = `160px repeat(${_timelineYears.length}, 1fr)`;
+
+  // Tooltip (set up once)
+  let tip = document.getElementById('tgTooltip');
+  if (!tip) {
+    tip = document.createElement('div'); tip.id = 'tgTooltip'; document.body.appendChild(tip);
+    tg.addEventListener('mouseover', e => {
+      const cell = e.target.closest('[data-tip]');
+      if (!cell) { tip.classList.remove('visible'); return; }
+      tip.innerHTML = cell.dataset.tip.replace(/\n/g, '<br>');
+      tip.classList.add('visible');
+    });
+    tg.addEventListener('mousemove', e => {
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top  = (e.clientY - 10) + 'px';
+    });
+    tg.addEventListener('mouseleave', () => tip.classList.remove('visible'));
+  }
+
+  const searchEl = document.getElementById('timelineSearch');
+  if (searchEl) searchEl.value = '';
+  filterTimeline('');
+}
+
+let _timelineWines = [], _timelineYears = [];
+
+function filterTimeline(q) {
+  const tg = document.getElementById('aTimeline');
+  if (!tg) return;
+  const filter = q.toLowerCase().trim();
+  const years = _timelineYears;
+  const currentYear = new Date().getFullYear();
   tg.innerHTML = '';
-  tg.style.gridTemplateColumns = `160px repeat(${years.length}, 1fr)`;
 
   const hdr = document.createElement('div'); hdr.className = 'tg-header'; tg.appendChild(hdr);
   years.forEach(y => {
@@ -4274,11 +4316,15 @@ function renderAnalyses() {
     tg.appendChild(d);
   });
 
-  windowWines.forEach(w => {
-    const btls = (w.bouteilles||0) - getTotalDrunk(w.id, 'bouteille')
-               + (w.magnums||0) - getTotalDrunk(w.id, 'magnum');
-    const shortName = w.domaine.replace(/^ch[âa]teau\s+/i,'').replace(/^chateau\s+/i,'').trim()
-      + ' ' + w.millesime;
+  const visible = filter
+    ? _timelineWines.filter(w => (w.domaine + ' ' + w.vin + ' ' + w.millesime).toLowerCase().includes(filter))
+    : _timelineWines;
+
+  visible.forEach(w => {
+    const remBtl = (w.bouteilles||0) - getTotalDrunk(w.id, 'bouteille');
+    const remMag = (w.magnums||0) - getTotalDrunk(w.id, 'magnum');
+    const btls = remBtl + remMag;
+    const shortName = w.domaine.replace(/^ch[âa]teau\s+/i,'').replace(/^chateau\s+/i,'').trim() + ' ' + w.millesime;
     const nameCell = document.createElement('div');
     nameCell.className = 'tg-name';
     nameCell.textContent = shortName;
@@ -4287,12 +4333,15 @@ function renderAnalyses() {
 
     const peak1 = Math.round(w.drinkFrom + (w.drinkTo - w.drinkFrom) / 3);
     const peak2 = Math.round(w.drinkFrom + 2 * (w.drinkTo - w.drinkFrom) / 3);
+    const stock = [remBtl > 0 ? remBtl + ' btl' : '', remMag > 0 ? remMag + ' mag' : ''].filter(Boolean).join(' · ') || '0';
 
     years.forEach(y => {
       const d = document.createElement('div');
       d.className = 'tg-cell';
       if (y >= w.drinkFrom && y <= w.drinkTo) {
-        d.className += (y >= peak1 && y <= peak2) ? ' peak' : ' ok';
+        const isPeak = (y >= peak1 && y <= peak2);
+        d.className += isPeak ? ' peak' : ' ok';
+        d.dataset.tip = `${shortName} · ${y}\n${stock}\n${isPeak ? 'Apogée' : 'Bonne période'} · ${w.drinkFrom}–${w.drinkTo}`;
       }
       if (y === currentYear) d.className += ' now';
       tg.appendChild(d);
