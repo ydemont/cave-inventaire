@@ -2060,6 +2060,10 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
           <p class="chart-label">Bouteilles à boire par année</p>
           <div class="chart-wrap-canvas"><canvas id="aDrinkYearChart"></canvas></div>
         </div>
+        <div class="chart-panel">
+          <p class="chart-label">Primeurs vs Spot</p>
+          <div class="chart-wrap-canvas"><canvas id="aTypeChart"></canvas></div>
+        </div>
       </div>
 
       <!-- France map — wine regions -->
@@ -2094,7 +2098,27 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
             </defs>
 
             <!-- France outline (simplified hexagone) -->
-            <path class="france-outline" d="M 200,60 L 280,50 L 340,80 L 400,100 L 430,160 L 460,220 L 470,300 L 450,380 L 410,440 L 360,490 L 280,510 L 200,495 L 140,460 L 100,400 L 80,320 L 90,240 L 120,160 L 160,100 Z"
+            <path class="france-outline" d="
+              M 248,66
+              Q 292,55 332,64
+              Q 368,72 402,92
+              Q 424,114 434,154
+              Q 444,194 447,238
+              Q 451,278 449,310
+              Q 447,342 446,360
+              Q 436,398 412,432
+              Q 386,464 350,480
+              Q 316,494 280,497
+              Q 242,500 207,486
+              Q 176,473 158,452
+              Q 140,422 132,382
+              Q 127,348 130,316
+              Q 130,290 126,272
+              L 88,238
+              Q 100,210 124,190
+              Q 150,168 178,146
+              Q 204,124 228,100
+              Q 240,82 248,66 Z"
               fill="rgba(239,228,199,0.4)" stroke="rgba(156,124,56,0.35)" stroke-width="1.2"/>
 
             <!-- Regions as organic blobs, approximately positioned -->
@@ -4207,6 +4231,33 @@ function renderAnalyses() {
       scales: {
         x: { ticks: { color: muted, font: { size: 9 }, maxRotation: 45, minRotation: 45 }, grid: { display: false } },
         y: { beginAtZero: true, ticks: { color: muted, font: { size: 10 }, stepSize: 1 } }
+      }
+    }
+  });
+
+  // ── 6. Primeurs vs Spot donut ────────────────────────────────────────────
+  const typeMap = { primeur: 0, spot: 0 };
+  ws.forEach(w => {
+    const btls = (w.bouteilles||0) + (w.magnums||0)*2;
+    if (w.type === 'primeur') typeMap.primeur += btls;
+    else typeMap.spot += btls;
+  });
+  aCharts.type = new Chart(document.getElementById('aTypeChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Primeurs', 'Spot'],
+      datasets: [{ data: [typeMap.primeur, typeMap.spot], backgroundColor: [oxblood, gold], borderColor: '#FAF6EC', borderWidth: 2, hoverOffset: 14, hoverBorderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: { position: 'right', labels: { color: ink, font: { size: 12, family: "'Cormorant Garamond', serif" }, boxWidth: 10, padding: 16 } },
+        tooltip: { callbacks: { label: ctx => {
+          const total = typeMap.primeur + typeMap.spot;
+          const pct = total ? Math.round(ctx.parsed / total * 100) : 0;
+          return ` ${ctx.parsed} btl · ${pct}%`;
+        }}}
       }
     }
   });
