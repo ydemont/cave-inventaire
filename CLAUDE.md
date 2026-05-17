@@ -24,9 +24,9 @@ The `.claude/launch.json` configures Claude Code to use a local preview server. 
 
 Everything lives in `index.html`, structured as three logical sections:
 
-1. **CSS** (lines ~13–1710): All styles, including CSS custom properties (`--ivory`, `--oxblood`, `--gold`, etc.) that define the Bordeaux label aesthetic. The design language is Cormorant Garamond (serif headings) + Inter (sans-serif data). Never introduce Bootstrap or Tailwind — the design system is bespoke.
+1. **CSS** (lines ~13–1930): All styles, including CSS custom properties (`--ivory`, `--oxblood`, `--gold`, etc.) that define the Bordeaux label aesthetic. The design language is Cormorant Garamond (serif headings) + Inter (sans-serif data). Never introduce Bootstrap or Tailwind — the design system is bespoke.
 
-2. **HTML** (lines ~1710–2510): The app shell with a sidebar nav (240px fixed) and main content area. Pages are toggled via CSS classes (`active`), not routing. The six pages are: `cave` (inventory), `queboire` (what to drink wizard), `historique` (tasting log), `valeur` (portfolio value), `analyses` (charts), `primeurs` (current-year primeur campaign tracker).
+2. **HTML** (lines ~1930–2660): The app shell with a sidebar nav (240px fixed) and main content area. Pages are toggled via CSS classes (`active`), not routing. The six pages are: `cave` (inventory), `queboire` (what to drink wizard), `historique` (tasting log), `valeur` (portfolio value), `analyses` (charts), `primeurs` (current-year primeur campaign tracker). After the app shell closing tag, two mobile-only elements are rendered: `<header class="mobile-header">` and `<nav class="mobile-bottom-nav">` — hidden by default, activated via `@media (max-width: 600px)`.
 
 3. **JavaScript** (lines ~2505–end): Vanilla JS, no framework. Key globals:
    - `wines[]` — in-memory array of all wine objects (source of truth after load)
@@ -67,6 +67,8 @@ The `f_domaine` and `f_vin` fields have custom autocomplete dropdowns (`setupAut
 - A multi-vintage tile (Bordeaux wines only, via `getRegion()`) showing châteaux held across 2+ distinct vintages. Châteaux bought this year are highlighted in gold; vintages purchased as this year's primeurs are highlighted in oxblood. Bottle counts reflect actual remaining stock using `getDrunkCount()`.
 - "This year" is always `new Date().getFullYear()` — no hardcoded year.
 
+**Mobile layout**: Activated at `≤ 600px` via CSS media query. The sidebar is hidden; a fixed top header (`<header class="mobile-header">`) shows the current page title and a "Ajouter" CTA (visible only on the cave page). A fixed bottom tab bar (`<nav class="mobile-bottom-nav">`) provides navigation with 6 icon+label tabs. The cave inventory table transforms into cards via CSS (`display:block` on `tr`/`td`) using `data-label` attributes on each `<td>` rendered by `renderTable()`. Modals become bottom sheets (full-width, rounded top corners). `showPage()` syncs the mobile header title and bottom nav active state via the `PAGE_TITLES` constant. At `≤ 1200px` (MacBook Air range), stat tile padding and font sizes are reduced so all 6 tiles fit without overflow.
+
 **France map**: SVG-based, using `data-region` attributes on `<g class="region-group">` elements. Regions are coloured by intensity (`intensity-1` through `intensity-5` CSS classes) based on bottle count. Clicking a region with `has-detail` class drills down to a sub-region view.
 
 **Label scanner**: "Coller depuis Claude" — user pastes a JSON string into a textarea and `tryPasteFill()` parses it to pre-fill the add form. Also supports URL parameter `?wine=<JSON>` for direct form pre-fill.
@@ -83,7 +85,7 @@ The `f_domaine` and `f_vin` fields have custom autocomplete dropdowns (`setupAut
 
 ## When Adding Features
 
-- New pages: add a `<section class="page" id="page-XXX">` in the HTML, a `<button class="sidebar-item" data-page="XXX" onclick="showPage('XXX')">` in the sidebar nav, and a handler case in `showPage()`.
+- New pages: add a `<section class="page" id="page-XXX">` in the HTML, a `<button class="sidebar-item" data-page="XXX" onclick="showPage('XXX')">` in the sidebar nav, a `<button class="mbn-item" data-page="XXX">` in the `.mobile-bottom-nav`, a title entry in the `PAGE_TITLES` constant, and a handler case in `showPage()`.
 - New charts: follow the `aCharts` pattern — destroy before recreate, use `Chart.defaults` already configured for the colour palette.
 - Supabase schema changes: update `rowToWine` and `wineToRow` mappers, and the `SEED` array if the new field needs a default for existing records.
 - The `estimateMarketPrice` function's `known` dictionary needs manual updating each new vintage year (typically May–June primeur season).

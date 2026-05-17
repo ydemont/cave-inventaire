@@ -1683,8 +1683,22 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
 .wrap { display: none !important; }
 
 /* ════════════════════════════════════════════════════════════
+   MOBILE CHROME — hidden by default, shown via media query
+════════════════════════════════════════════════════════════ */
+.mobile-header { display: none; }
+.mobile-bottom-nav { display: none; }
+
+/* ════════════════════════════════════════════════════════════
    RESPONSIVE
 ════════════════════════════════════════════════════════════ */
+
+/* ── Medium screens: 1200px and below ── */
+@media (max-width: 1200px) {
+  .stat { padding: 22px 14px; }
+  .stat-val { font-size: clamp(1.4rem, 2.2vw, 2rem); }
+  .page-content { padding: 32px 36px 80px; }
+}
+
 @media (max-width: 900px) {
   .stats { grid-template-columns: repeat(3, 1fr); }
   .wrap { padding: 0 24px 48px; }
@@ -1692,6 +1706,8 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
   .header-nav { justify-content: flex-start; }
   .analyses-summary { grid-template-columns: repeat(2, 1fr); }
   .value-grid { grid-template-columns: 1fr; }
+  .stat { padding: 20px 12px; }
+  .stat-val { font-size: clamp(1.3rem, 2vw, 1.8rem); }
 }
 @media (max-width: 600px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
@@ -1701,6 +1717,145 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
   .value-rows-header > span:nth-child(4), .value-rows-header > span:nth-child(5),
   .wine-value-row > span:nth-child(4), .wine-value-row > span:nth-child(5) { display: none; }
   .modal { padding: 28px 24px; }
+}
+
+/* ── Full mobile layout: 600px and below ── */
+@media (max-width: 600px) {
+  /* Hide desktop sidebar entirely */
+  .sidebar { display: none !important; }
+
+  /* Show mobile chrome */
+  .mobile-header {
+    display: flex;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    height: 56px; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    background: var(--oxblood); color: var(--ivory);
+    border-bottom: 1px solid var(--oxblood-deep);
+    box-shadow: 0 2px 8px rgba(26,18,16,0.25);
+  }
+  .mobile-header-title {
+    font-family: 'Cormorant SC', serif;
+    font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--ivory);
+  }
+  .mobile-header-cta {
+    background: var(--gold); color: var(--ivory);
+    border: none; border-radius: 4px;
+    padding: 9px 16px; font-size: 0.68rem; letter-spacing: 0.12em;
+    font-family: 'Cormorant SC', serif; cursor: pointer;
+    text-transform: uppercase; font-weight: 500;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+    background: var(--ivory); border-top: 1px solid var(--hairline);
+    height: 64px; align-items: stretch;
+    box-shadow: 0 -2px 8px rgba(26,18,16,0.08);
+  }
+  .mbn-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    background: none; border: none; cursor: pointer;
+    padding: 8px 2px; transition: color 0.15s;
+    color: var(--muted);
+    border-top: 2px solid transparent;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mbn-item.active { color: var(--oxblood); border-top-color: var(--oxblood); }
+  .mbn-icon { font-size: 18px; line-height: 1; }
+  .mbn-label {
+    font-family: 'Cormorant SC', serif;
+    font-size: 0.52rem; letter-spacing: 0.08em;
+    text-transform: uppercase; line-height: 1;
+  }
+
+  /* App shell: full width, pad for fixed header + bottom nav */
+  .app-shell { grid-template-columns: 1fr; padding-top: 56px; }
+  .page-content { padding: 20px 14px 80px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 20px; }
+  .page-title { font-size: clamp(1.6rem, 6vw, 2rem); }
+  .page-actions { display: none; } /* add button lives in mobile header */
+
+  /* Stats: 2-column */
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat { padding: 16px 10px; }
+  .stat-val { font-size: 1.5rem; }
+  .stat-lbl { font-size: 0.52rem; letter-spacing: 0.18em; }
+
+  /* Toolbar: stack filters */
+  .toolbar { flex-direction: column; gap: 8px; }
+  .toolbar select, .toolbar input { width: 100%; box-sizing: border-box; font-size: 0.9rem; padding: 10px 14px; }
+  .search-wrap { width: 100%; }
+  .search-wrap input { width: 100%; box-sizing: border-box; }
+
+  /* Cave table → card view */
+  .table-wrap { overflow: visible; }
+  .table-wrap table, .table-wrap thead, .table-wrap tbody,
+  .table-wrap th, .table-wrap td, .table-wrap tr { display: block; }
+  .table-wrap thead tr { display: none; }
+  .table-wrap tbody tr {
+    margin-bottom: 14px;
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    background: var(--cream);
+    overflow: hidden;
+    box-shadow: var(--shadow-paper);
+  }
+  .table-wrap tbody td {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--hairline-soft);
+    font-size: 0.88rem; min-height: 42px;
+    white-space: normal; max-width: none !important;
+    overflow: visible !important; text-overflow: unset !important;
+  }
+  .table-wrap tbody td:last-child { border-bottom: none; }
+  .table-wrap tbody td::before {
+    content: attr(data-label);
+    font-family: 'Cormorant SC', serif;
+    font-size: 0.58rem; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--muted);
+    flex-shrink: 0; margin-right: 12px;
+  }
+  /* Hide low-priority columns */
+  .table-wrap tbody td[data-label="Note"],
+  .table-wrap tbody td[data-label="Bu"] { display: none; }
+  /* Actions cell */
+  .table-wrap tbody td[data-label=""] {
+    justify-content: flex-end; gap: 10px;
+    padding: 12px 14px; background: var(--ivory-soft);
+  }
+  .table-wrap tbody td[data-label=""]::before { display: none; }
+  .icon-btn { width: 38px; height: 38px; font-size: 16px; border-radius: 4px; }
+
+  /* Modals: sheet from bottom */
+  .overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    width: 100% !important; max-width: 100% !important;
+    max-height: 90vh; border-radius: 16px 16px 0 0;
+    padding: 24px 16px 32px;
+    overflow-y: auto;
+  }
+
+  /* Forms: single column */
+  .form-grid { grid-template-columns: 1fr !important; }
+
+  /* Charts */
+  .chart-wrap-canvas canvas { max-height: 240px; }
+  #analysesGrid { grid-template-columns: 1fr !important; }
+
+  /* Analyses summary */
+  .analyses-summary { grid-template-columns: repeat(2, 1fr); }
+
+  /* Primeurs */
+  .primeurs-stats { grid-template-columns: 1fr; }
+
+  /* Value page columns */
+  .value-rows-header, .wine-value-row { grid-template-columns: 1fr 80px 80px; }
+  .value-rows-header > span:nth-child(n+4),
+  .wine-value-row > span:nth-child(n+4) { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2452,6 +2607,33 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
 </div>
 <!-- ═══ /APP SHELL ═══ -->
 
+<!-- Mobile-only: sticky top header -->
+<header class="mobile-header" id="mobileHeader">
+  <span class="mobile-header-title" id="mobileHeaderTitle">Inventaire</span>
+  <button class="mobile-header-cta" onclick="openAdd()">+ Ajouter</button>
+</header>
+
+<!-- Mobile-only: bottom tab bar -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+  <button class="mbn-item active" data-page="cave" onclick="showPage('cave')">
+    <span class="mbn-icon">🍾</span><span class="mbn-label">Cave</span>
+  </button>
+  <button class="mbn-item" data-page="queboire" onclick="showPage('queboire')">
+    <span class="mbn-icon">🍷</span><span class="mbn-label">Que boire</span>
+  </button>
+  <button class="mbn-item" data-page="historique" onclick="showPage('historique')">
+    <span class="mbn-icon">📖</span><span class="mbn-label">Historique</span>
+  </button>
+  <button class="mbn-item" data-page="valeur" onclick="showPage('valeur')">
+    <span class="mbn-icon">📈</span><span class="mbn-label">Valeur</span>
+  </button>
+  <button class="mbn-item" data-page="analyses" onclick="showPage('analyses')">
+    <span class="mbn-icon">📊</span><span class="mbn-label">Analyses</span>
+  </button>
+  <button class="mbn-item" data-page="primeurs" onclick="showPage('primeurs')">
+    <span class="mbn-icon">🏷</span><span class="mbn-label">Primeurs</span>
+  </button>
+</nav>
 
 <div class="overlay" id="modalOverlay">
   <div class="modal">
@@ -2934,18 +3116,18 @@ function render() {
     const drunkBadgeMag = drunk.mag > 0 ? `<span class="btl-drunk">−${drunk.mag}</span>` : '';
 
     return `<tr class="${inCellar ? 'delivered' : 'pending'}">
-      <td class="domaine">${esc(w.domaine)} ${typeBadge}</td>
-      <td class="vin" title="${esc(w.vin)}">${esc(w.vin)}</td>
-      <td class="millesime">${w.millesime||'—'}</td>
-      <td class="num"><span class="btl-count"><span class="btl-remaining">${remBtl}</span>${drunkBadgeBtl}</span></td>
-      <td class="num"><span class="btl-count"><span class="btl-remaining">${remMag}</span>${drunkBadgeMag}</span></td>
-      <td class="price">${prix}</td>
-      <td>${statusBadge}</td>
-      <td style="color:var(--muted);font-size:0.78rem">${w.livraison||'—'}</td>
-      <td class="window">${drinkWindow}</td>
-      <td style="color:var(--muted);font-size:0.75rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.note||'')}</td>
-      <td class="num" style="color:${drunk.total>0?'var(--red-light)':'var(--muted)'}">${drunk.total||'—'}</td>
-      <td class="actions">
+      <td class="domaine" data-label="Domaine">${esc(w.domaine)} ${typeBadge}</td>
+      <td class="vin" data-label="Appellation" title="${esc(w.vin)}">${esc(w.vin)}</td>
+      <td class="millesime" data-label="Mill.">${w.millesime||'—'}</td>
+      <td class="num" data-label="Btl"><span class="btl-count"><span class="btl-remaining">${remBtl}</span>${drunkBadgeBtl}</span></td>
+      <td class="num" data-label="Mag"><span class="btl-count"><span class="btl-remaining">${remMag}</span>${drunkBadgeMag}</span></td>
+      <td class="price" data-label="Prix/btl">${prix}</td>
+      <td data-label="Statut">${statusBadge}</td>
+      <td data-label="Livraison" style="color:var(--muted);font-size:0.78rem">${w.livraison||'—'}</td>
+      <td class="window" data-label="Fenêtre">${drinkWindow}</td>
+      <td data-label="Note" style="color:var(--muted);font-size:0.75rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.note||'')}</td>
+      <td class="num" data-label="Bu" style="color:${drunk.total>0?'var(--red-light)':'var(--muted)'}">${drunk.total||'—'}</td>
+      <td class="actions" data-label="">
         <button class="icon-btn" onclick="openDrink(${w.id})" title="Logger une dégustation" style="font-size:15px">🍷</button>
         <button class="icon-btn" onclick="openEdit(${w.id})" title="Modifier">✎</button>
         <button class="icon-btn del" onclick="confirmDelete(${w.id})" title="Supprimer">✕</button>
@@ -3159,6 +3341,11 @@ function toast(msg) {
 }
 
 // ── PAGE NAVIGATION ────────────────────────────────────────────────────────
+const PAGE_TITLES = {
+  cave: 'Inventaire', queboire: 'Que boire', historique: 'Historique',
+  valeur: 'Valeur', analyses: 'Analyses', primeurs: 'Primeurs'
+};
+
 function showPage(name) {
   // Swap active page
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -3170,6 +3357,17 @@ function showPage(name) {
   document.querySelectorAll('.sidebar-item').forEach(b => {
     b.classList.toggle('active', b.dataset.page === name);
   });
+
+  // Sync mobile bottom nav active tab
+  document.querySelectorAll('.mbn-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === name);
+  });
+
+  // Sync mobile header title and CTA visibility
+  const titleEl = document.getElementById('mobileHeaderTitle');
+  if (titleEl) titleEl.textContent = PAGE_TITLES[name] || name;
+  const ctaEl = document.querySelector('.mobile-header-cta');
+  if (ctaEl) ctaEl.style.display = name === 'cave' ? '' : 'none';
 
   // Scroll to top smoothly
   window.scrollTo({ top: 0, behavior: 'smooth' });
