@@ -2702,6 +2702,7 @@ async function load() {
     document.getElementById('sidebarStatus').textContent = '⚠ Erreur de connexion';
     wines = JSON.parse(JSON.stringify(SEED));
   }
+  await loadTastings();
   render(); updateStats();
 }
 
@@ -4754,8 +4755,9 @@ function openPrimeurs() {
     if (!byDomaine[w.domaine]) byDomaine[w.domaine] = {};
     const key = w.millesime;
     if (!byDomaine[w.domaine][key]) byDomaine[w.domaine][key] = { btl: 0, mag: 0 };
-    byDomaine[w.domaine][key].btl += w.bouteilles || 0;
-    byDomaine[w.domaine][key].mag += w.magnums || 0;
+    const drunk = getDrunkCount(w.id);
+    byDomaine[w.domaine][key].btl += Math.max(0, (w.bouteilles || 0) - drunk.btl);
+    byDomaine[w.domaine][key].mag += Math.max(0, (w.magnums || 0) - drunk.mag);
   });
   const multiVintage = Object.entries(byDomaine)
     .filter(([, v]) => Object.keys(v).length >= 2)
