@@ -26,7 +26,7 @@ Everything lives in `index.html`, structured as three logical sections:
 
 1. **CSS** (lines ~13–1710): All styles, including CSS custom properties (`--ivory`, `--oxblood`, `--gold`, etc.) that define the Bordeaux label aesthetic. The design language is Cormorant Garamond (serif headings) + Inter (sans-serif data). Never introduce Bootstrap or Tailwind — the design system is bespoke.
 
-2. **HTML** (lines ~1710–2505): The app shell with a sidebar nav (240px fixed) and main content area. Pages are toggled via CSS classes (`active`), not routing. The five pages are: `cave` (inventory), `queboire` (what to drink wizard), `historique` (tasting log), `valeur` (portfolio value), `analyses` (charts).
+2. **HTML** (lines ~1710–2510): The app shell with a sidebar nav (240px fixed) and main content area. Pages are toggled via CSS classes (`active`), not routing. The six pages are: `cave` (inventory), `queboire` (what to drink wizard), `historique` (tasting log), `valeur` (portfolio value), `analyses` (charts), `primeurs` (current-year primeur campaign tracker).
 
 3. **JavaScript** (lines ~2505–end): Vanilla JS, no framework. Key globals:
    - `wines[]` — in-memory array of all wine objects (source of truth after load)
@@ -51,13 +51,21 @@ Everything lives in `index.html`, structured as three logical sections:
 
 **Add/Edit wine**: `openAdd()` / `openEdit(id)` → modal form → `saveWine()`. If `drinkFrom`/`drinkTo` are missing, `saveWineWithLookup()` calls the **`drinking-window` Supabase Edge Function** (deployed at `${SB_URL}/functions/v1/drinking-window`), which proxies to `claude-haiku-4-5` server-side. The Edge Function requires `ANTHROPIC_API_KEY` set as a Supabase secret. Do not call the Anthropic API directly from the browser.
 
-**Tasting log**: `openDrink(id)` → log entry with date, rating (1–5 stars), note, format (bouteille/magnum), qty → saved to Supabase `tastings` table. Drunk bottles are subtracted from displayed stock in the inventory.
+The `f_domaine` and `f_vin` fields have custom autocomplete dropdowns (`setupAutocomplete()`). `f_domaine` suggests unique château names already in `wines[]`; `f_vin` suggests names from `APPELLATION_MAP`. Keyboard navigation (↑↓ Enter Escape) is supported. Both are initialised in the `DOMContentLoaded` listener.
+
+**Tasting log**: `openDrink(id)` → log entry with date, rating (1–5 stars), note, format (bouteille/magnum), qty → saved to Supabase `tastings` table. Drunk bottles are subtracted from displayed stock in the inventory. All tastings are now loaded upfront at startup via `loadTastings()` (called inside `load()`), so `getDrunkCount(wineId)` is always accurate on every page.
 
 **"Que boire" wizard**: 3-step questionnaire (occasion, dish, mood) → `generateRecommendations()` scores in-cellar wines using a local algorithm (no API call) that weighs drinking window, appellation, food pairing, and wine age.
 
 **Portfolio value** (`valeur` page): `openValueTracker()` calculates estimated market prices via `estimateMarketPrice(w)`. Prices are first looked up in a hardcoded `known` dictionary (château + vintage → CHF), then fall back to appellation/age multipliers applied to purchase price. Results are saved quarterly to Supabase `value_snapshots` and cached in memory.
 
 **Analyses page**: 6 Chart.js 4.4.1 charts (canvas elements) + an SVG France map showing bottle counts by wine region. Charts are re-instantiated on each `openAnalyses()` call using the `aCharts` object; always call `chart.destroy()` before recreating.
+
+**Primeurs page** (`openPrimeurs()`): Tracks the current-year primeur buying campaign. Shows:
+- Two stat tiles: total CHF spent, total bottles + magnums bought.
+- A purchase table listing all wines where `type === 'primeur'` and `date` starts with the current year, sorted by château.
+- A multi-vintage tile (Bordeaux wines only, via `getRegion()`) showing châteaux held across 2+ distinct vintages. Châteaux bought this year are highlighted in gold; vintages purchased as this year's primeurs are highlighted in oxblood. Bottle counts reflect actual remaining stock using `getDrunkCount()`.
+- "This year" is always `new Date().getFullYear()` — no hardcoded year.
 
 **France map**: SVG-based, using `data-region` attributes on `<g class="region-group">` elements. Regions are coloured by intensity (`intensity-1` through `intensity-5` CSS classes) based on bottle count. Clicking a region with `has-detail` class drills down to a sub-region view.
 
