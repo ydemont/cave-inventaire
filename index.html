@@ -2090,6 +2090,7 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
 
     <div class="sidebar-footer">
       <button onclick="resetToOriginal()">↺ Réinitialiser l'inventaire</button>
+      <button onclick="signOut()" style="margin-top:6px;opacity:.7">⏏ Déconnexion</button>
     </div>
   </aside>
 
@@ -2816,14 +2817,15 @@ const SEED = [{"id":1,"date":"2022-05-23","domaine":"Château Mangot","vin":"Sai
 
 // ── SUPABASE CONFIG ────────────────────────────────────────────────────────
 const SB_URL = 'https://xhokwnpplbkjtqhjicrs.supabase.co';
-const SB_KEY = 'sb_publishable_K1rce4U6tYfsl3udNygYLw__z1B0Tfl';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhob2t3bnBwbGJranRxaGppY3JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTk5MDksImV4cCI6MjA4ODYzNTkwOX0.I45OCoE09uq656ao9qindHqrhIFVhlztfuWg_Ka1l0Q';
 
 async function sbFetch(path, options = {}) {
+  const token = (await getAccessToken()) || SB_KEY;
   const res = await fetch(SB_URL + '/rest/v1/' + path, {
     ...options,
     headers: {
       'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
+      'Authorization': 'Bearer ' + token,
       'Content-Type': 'application/json',
       'Prefer': options.prefer || 'return=representation',
       ...(options.headers || {})
@@ -4782,29 +4784,81 @@ function getTotalDrunk(wineId, format) {
 
 
 
-// ── PASSWORD ────────────────────────────────────────────────────────────────
-const PW_HASH = 'e9cc2329b410c4eaf370182adeb54e13d71a9613fbb933065a84bcd848ac6d5a';
+// ── AUTH (Supabase) ──────────────────────────────────────────────────────────
+const OWNER_EMAIL = 'yann.demont@gmail.com';
+let authSession = null; // { access_token, refresh_token, expires_at }
 
-async function hashPassword(pw) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+function loadStoredSession() {
+  localStorage.removeItem('cave_auth'); // remove legacy SHA-256 token
+  try {
+    const raw = localStorage.getItem('cave_session');
+    if (raw) authSession = JSON.parse(raw);
+  } catch { authSession = null; }
+}
+
+async function refreshSession() {
+  if (!authSession?.refresh_token) { authSession = null; return false; }
+  try {
+    const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ refresh_token: authSession.refresh_token })
+    });
+    if (!res.ok) { authSession = null; localStorage.removeItem('cave_session'); return false; }
+    authSession = await res.json();
+    if (!authSession.expires_at && authSession.expires_in) {
+      authSession.expires_at = Math.floor(Date.now() / 1000) + authSession.expires_in;
+    }
+    localStorage.setItem('cave_session', JSON.stringify(authSession));
+    return true;
+  } catch { authSession = null; return false; }
+}
+
+async function getAccessToken() {
+  if (!authSession?.access_token) return null;
+  // Only refresh if expires_at is known and we're within 60s of expiry
+  if (authSession.expires_at && Date.now() / 1000 > authSession.expires_at - 60) {
+    await refreshSession();
+  }
+  return authSession?.access_token || null;
 }
 
 async function checkPassword() {
-  const pw = document.getElementById('pwInput').value;
-  const hash = await hashPassword(pw);
-  if (hash === PW_HASH) {
+  const pw = document.getElementById('pwInput').value.trim();
+  if (!pw) return;
+  const btn = document.querySelector('.pw-btn');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ email: OWNER_EMAIL, password: pw })
+    });
+    if (!res.ok) throw new Error('invalid');
+    authSession = await res.json();
+    if (!authSession.expires_at && authSession.expires_in) {
+      authSession.expires_at = Math.floor(Date.now() / 1000) + authSession.expires_in;
+    }
     if (document.getElementById('pwRemember').checked) {
-      localStorage.setItem('cave_auth', PW_HASH);
+      localStorage.setItem('cave_session', JSON.stringify(authSession));
     }
     document.getElementById('passwordScreen').classList.add('hidden');
     document.getElementById('pwInput').value = '';
-  } else {
+  } catch {
     const err = document.getElementById('pwError');
     err.textContent = 'Mot de passe incorrect';
     document.getElementById('pwInput').classList.add('shake');
     setTimeout(() => { err.textContent = ''; document.getElementById('pwInput').classList.remove('shake'); }, 2000);
+  } finally {
+    btn.disabled = false;
   }
+}
+
+function signOut() {
+  authSession = null;
+  localStorage.removeItem('cave_session');
+  document.getElementById('passwordScreen').classList.remove('hidden');
+  document.getElementById('pwInput').focus();
 }
 
 // ── INTRO ANIMATION ─────────────────────────────────────────────────────
@@ -4819,12 +4873,15 @@ function runIntro(callback) {
 }
 
 async function initAuth() {
-  const stored = localStorage.getItem('cave_auth');
-  if (stored === PW_HASH) {
-    runIntro(() => {
-      document.getElementById('passwordScreen').classList.add('hidden');
-    });
-    return;
+  loadStoredSession();
+  if (authSession) {
+    const ok = await refreshSession();
+    if (ok) {
+      runIntro(() => {
+        document.getElementById('passwordScreen').classList.add('hidden');
+      });
+      return;
+    }
   }
   // Not authed — run intro then show password screen
   runIntro(() => {
