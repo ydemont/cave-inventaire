@@ -73,7 +73,9 @@ The `f_domaine` and `f_vin` fields have custom autocomplete dropdowns (`setupAut
 
 **Label scanner**: "Coller depuis Claude" — user pastes a JSON string into a textarea and `tryPasteFill()` parses it to pre-fill the add form. Also supports URL parameter `?wine=<JSON>` for direct form pre-fill.
 
-**Authentication**: SHA-256 hash of password stored in `localStorage` under `cave_auth`. The correct hash is stored in the `PW_HASH` constant and compared directly — never re-hash the plaintext at runtime. Password is `demont-vins`.
+**Authentication**: Uses **Supabase Auth** (`signInWithPassword` via REST, no SDK). The owner email is hardcoded as `OWNER_EMAIL = 'yann.demont@gmail.com'`. On login, the JWT session is stored in `localStorage` under `cave_session` and auto-refreshed before expiry via `getAccessToken()`. `sbFetch()` sends `Authorization: Bearer <jwt>` when a session exists, falling back to the anon key for unauthenticated reads.
+
+**RLS policies**: All four tables (`wines`, `tastings`, `value_snapshots`, `keepalive`) have RLS enabled. SELECT is open to the anon role (data loads at startup without login). INSERT/UPDATE/DELETE require `auth.uid() IS NOT NULL` (authenticated users only). Login is therefore required to add, edit, or delete any record. The `signOut()` function clears the session and returns to the login screen.
 
 ## Style Conventions
 
