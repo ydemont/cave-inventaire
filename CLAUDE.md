@@ -57,7 +57,7 @@ The `f_domaine` and `f_vin` fields have custom autocomplete dropdowns (`setupAut
 
 **"Que boire" wizard**: 3-step questionnaire (occasion, dish, mood) → `generateRecommendations()` scores in-cellar wines using a local algorithm (no API call) that weighs drinking window, appellation, food pairing, and wine age.
 
-**Portfolio value** (`valeur` page): `openValueTracker()` calculates estimated market prices via `estimateMarketPrice(w)`. Prices are first looked up in a hardcoded `known` dictionary (château + vintage → CHF), then fall back to appellation/age multipliers applied to purchase price. Results are saved quarterly to Supabase `value_snapshots` and cached in memory.
+**Portfolio value** (`valeur` page): `openValueTracker()` calculates estimated market prices via `estimateMarketPrice(w)`. Prices are looked up via two keys: `dom_firstWordOfVin_vintage` first (disambiguates multi-cuvée domains like Louis Jadot), then `dom_vintage` as fallback; finally appellation/age multipliers applied to purchase price. `dom` = domaine lowercased with the `Château`/`Chateau` prefix stripped — articles like "la", "les", "clos" are **not** stripped (e.g. `'la clef de voûte_2022'`, `'clos floridène_2021'`). Results are saved quarterly to Supabase `value_snapshots` (`VALUE_VERSION = 'v7'`); bump this constant to force recalculation. The table now shows 6 columns: Domaine+Appellation | Stock | Achat | Marché+CHF/btl | +/− | %.
 
 **Analyses page**: 6 Chart.js 4.4.1 charts (canvas elements) + an SVG France map showing bottle counts by wine region. Charts are re-instantiated on each `openAnalyses()` call using the `aCharts` object; always call `chart.destroy()` before recreating.
 
@@ -66,6 +66,13 @@ The `f_domaine` and `f_vin` fields have custom autocomplete dropdowns (`setupAut
 - A purchase table listing all wines where `type === 'primeur'` and `date` starts with the current year, sorted by château.
 - A multi-vintage tile (Bordeaux wines only, via `getRegion()`) showing châteaux held across 2+ distinct vintages. Châteaux bought this year are highlighted in gold; vintages purchased as this year's primeurs are highlighted in oxblood. Bottle counts reflect actual remaining stock using `getDrunkCount()`.
 - "This year" is always `new Date().getFullYear()` — no hardcoded year.
+
+**Responsive inventory table**: The cave table progressively hides columns as the viewport narrows — never horizontal-scrolls on common screen sizes:
+- `≤ 1200px`: hide Note (col 10) + Bu (col 11); tighten cell padding.
+- `≤ 900px`: also hide Livraison (col 8); sidebar folds into a top nav bar.
+- `≤ 768px`: also hide Fenêtre (col 9).
+- `≤ 600px`: full card view (all fields shown as labelled rows).
+Column hiding uses `#wineTable th:nth-child(N), #wineTable td:nth-child(N) { display: none; }` — scoped to `#wineTable` so it only affects the inventory table.
 
 **Mobile layout**: Activated at `≤ 600px` via CSS media query. The sidebar is hidden; a fixed top header (`<header class="mobile-header">`) shows the current page title and a "Ajouter" CTA (visible only on the cave page). A fixed bottom tab bar (`<nav class="mobile-bottom-nav">`) provides navigation with 6 icon+label tabs. The cave inventory table transforms into cards via CSS (`display:block` on `tr`/`td`) using `data-label` attributes on each `<td>` rendered by `renderTable()`. Modals become bottom sheets (full-width, rounded top corners). `showPage()` syncs the mobile header title and bottom nav active state via the `PAGE_TITLES` constant. At `≤ 1200px` (MacBook Air range), stat tile padding and font sizes are reduced so all 6 tiles fit without overflow.
 
@@ -90,7 +97,7 @@ The `f_domaine` and `f_vin` fields have custom autocomplete dropdowns (`setupAut
 - New pages: add a `<section class="page" id="page-XXX">` in the HTML, a `<button class="sidebar-item" data-page="XXX" onclick="showPage('XXX')">` in the sidebar nav, a `<button class="mbn-item" data-page="XXX">` in the `.mobile-bottom-nav`, a title entry in the `PAGE_TITLES` constant, and a handler case in `showPage()`.
 - New charts: follow the `aCharts` pattern — destroy before recreate, use `Chart.defaults` already configured for the colour palette.
 - Supabase schema changes: update `rowToWine` and `wineToRow` mappers, and the `SEED` array if the new field needs a default for existing records.
-- The `estimateMarketPrice` function's `known` dictionary needs manual updating each new vintage year (typically May–June primeur season).
+- The `estimateMarketPrice` function's `known` dictionary needs manual updating each new vintage year (typically May–June primeur season). Keys must match the generated `dom` value exactly — `dom` strips only the `Château`/`Chateau` prefix, not articles. Always verify key matching by tracing `domaine.toLowerCase().replace(/^ch[âa]teau\s+/i,'')`. For multi-cuvée domains, use the long key format `dom_firstWordOfVin_vintage`.
 - New Edge Functions: deploy via the Supabase MCP tool (`deploy_edge_function`, project `xhokwnpplbkjtqhjicrs`). Edge functions live at `${SB_URL}/functions/v1/<name>` — do not use `sbFetch` for them (it adds `/rest/v1/` prefix); call with a plain `fetch` including the `apikey` header.
 
 ## Appellation & Domaine Conventions
