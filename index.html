@@ -951,6 +951,9 @@ tbody tr:hover td.actions { opacity: 1; }
 }
 @media (max-width: 720px) {
   .value-top-grid { grid-template-columns: 1fr; }
+  /* Hide Achat at 720px — Stock + Marché + +/- + % still visible */
+  .value-rows-header, .wine-value-row { grid-template-columns: 1fr 65px 130px 85px 65px; }
+  .value-rows-header > :nth-child(3), .wine-value-row > :nth-child(3) { display: none; }
 }
 
 .value-top-panel {
@@ -991,7 +994,7 @@ tbody tr:hover td.actions { opacity: 1; }
 
 /* Wine list in value modal */
 .value-rows-header {
-  display: grid; grid-template-columns: 1fr 110px 110px 80px 80px;
+  display: grid; grid-template-columns: 1fr 70px 110px 130px 85px 65px;
   gap: 10px; padding: 10px 14px;
   background: var(--ivory-deep);
   border-bottom: 2px solid var(--gold);
@@ -1001,7 +1004,7 @@ tbody tr:hover td.actions { opacity: 1; }
   font-weight: 500;
 }
 .wine-value-row {
-  display: grid; grid-template-columns: 1fr 110px 110px 80px 80px;
+  display: grid; grid-template-columns: 1fr 70px 110px 130px 85px 65px;
   gap: 10px; align-items: center;
   padding: 11px 14px; border-bottom: 1px solid var(--hairline-soft);
   transition: background 0.15s;
@@ -1022,6 +1025,11 @@ tbody tr:hover td.actions { opacity: 1; }
 .wine-value-row > span {
   font-family: 'Inter', sans-serif;
   font-size: 0.85rem; font-variant-numeric: tabular-nums;
+}
+.wv-stock {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem; font-variant-numeric: tabular-nums;
+  color: var(--ink-soft); text-align: center; line-height: 1.55;
 }
 .delta-pos { color: var(--green); font-weight: 500; }
 .delta-neg { color: var(--red-alert); font-weight: 500; }
@@ -1697,6 +1705,14 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
   .stat { padding: 22px 14px; }
   .stat-val { font-size: clamp(1.4rem, 2.2vw, 2rem); }
   .page-content { padding: 32px 36px 80px; }
+  /* Tighten table cells */
+  thead th, td { padding: 11px 9px; }
+  thead th:first-child, td:first-child { padding-left: 16px; }
+  thead th:last-child, td:last-child { padding-right: 16px; }
+  td.vin { max-width: 160px; }
+  /* Hide Note + Bu columns — low value at this width */
+  #wineTable th:nth-child(10), #wineTable th:nth-child(11),
+  #wineTable td:nth-child(10), #wineTable td:nth-child(11) { display: none; }
 }
 
 @media (max-width: 900px) {
@@ -1708,14 +1724,32 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
   .value-grid { grid-template-columns: 1fr; }
   .stat { padding: 20px 12px; }
   .stat-val { font-size: clamp(1.3rem, 2vw, 1.8rem); }
+  /* Hide Livraison — full width available, still need to trim */
+  #wineTable th:nth-child(8), #wineTable td:nth-child(8) { display: none; }
+  thead th, td { padding: 10px 8px; }
+  thead th:first-child, td:first-child { padding-left: 12px; }
+  thead th:last-child, td:last-child { padding-right: 12px; }
+  td.vin { max-width: 140px; }
+}
+
+@media (max-width: 768px) {
+  /* Hide Fenêtre too — sidebar is already a top bar, space still tight */
+  #wineTable th:nth-child(9), #wineTable td:nth-child(9) { display: none; }
+  thead th, td { padding: 9px 7px; }
+  thead th:first-child, td:first-child { padding-left: 10px; }
+  thead th:last-child, td:last-child { padding-right: 10px; }
+  td.vin { max-width: 120px; }
+  .search-wrap { min-width: 160px; }
 }
 @media (max-width: 600px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
   .header-brand { flex-direction: column; align-items: flex-start; gap: 12px; }
   .nav-btn { padding: 8px 14px; font-size: 0.62rem; }
-  .value-rows-header, .wine-value-row { grid-template-columns: 1fr 80px 80px; }
-  .value-rows-header > span:nth-child(4), .value-rows-header > span:nth-child(5),
-  .wine-value-row > span:nth-child(4), .wine-value-row > span:nth-child(5) { display: none; }
+  /* Value rows: Name | Marché | % only */
+  .value-rows-header, .wine-value-row { grid-template-columns: 1fr 120px 65px; }
+  .value-rows-header > :nth-child(2), .wine-value-row > :nth-child(2),
+  .value-rows-header > :nth-child(3), .wine-value-row > :nth-child(3),
+  .value-rows-header > :nth-child(5), .wine-value-row > :nth-child(5) { display: none; }
   .modal { padding: 28px 24px; }
 }
 
@@ -1852,10 +1886,11 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
   /* Primeurs */
   .primeurs-stats { grid-template-columns: 1fr; }
 
-  /* Value page columns */
-  .value-rows-header, .wine-value-row { grid-template-columns: 1fr 80px 80px; }
-  .value-rows-header > span:nth-child(n+4),
-  .wine-value-row > span:nth-child(n+4) { display: none; }
+  /* Value page columns: Name | Marché | % */
+  .value-rows-header, .wine-value-row { grid-template-columns: 1fr 120px 65px; }
+  .value-rows-header > :nth-child(2), .wine-value-row > :nth-child(2),
+  .value-rows-header > :nth-child(3), .wine-value-row > :nth-child(3),
+  .value-rows-header > :nth-child(5), .wine-value-row > :nth-child(5) { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3964,7 +3999,7 @@ function generateRecommendations() {
 }
 
 // ── VALUE TRACKER ──────────────────────────────────────────────────────────
-const VALUE_VERSION = 'v6';
+const VALUE_VERSION = 'v7';
 let valueCache = {};
 
 function getQuarterLabel() {
@@ -4067,45 +4102,78 @@ function estimateMarketPrice(w) {
   const purchase = w.prixBouteille || 0;
 
   // ── 1. Known château lookup (normalised name + vintage) ─────────────────
+  // Keys must match what the dom extraction above produces (château prefix stripped, lowercased).
+  // For domains with multiple wines (e.g. Louis Jadot), a second lookup uses the first
+  // word of the vin name as a disambiguator: `dom_vinPart_vintage`.
   const known = {
-    // 2021
-    'mangot_2021': 22, 'haut-brisson_2021': 28, 'tour saint christophe_2021': 35,
-    'floridène_2021': 20, 'langoa barton_2021': 58, 'siaurac_2021': 20,
-    'sociando-mallet_2021': 38, 'sociando mallet_2021': 38,    'larrivet haut-brion_2021': 45, 'larrivet haut brion_2021': 45,
-    // 2022
-    'haut veyrac_2022': 18, 'larrivet haut-brion_2022': 42, 'larrivet haut brion_2022': 42,
-    'tronquoy_2022': 32, 'chasse-spleen_2022': 40, 'chasse spleen_2022': 40,
-    'alcée_2022': 22, 'alcee_2022': 22, 'cantemerle_2022': 35, 'laroque_2022': 38,
-    'clef de voûte_2022': 22, 'clef de voute_2022': 22,
-    'la mauriane_2022': 18, 'prieuré-lichine_2022': 55, 'prieure-lichine_2022': 55,
-    'hauts-conseillants_2022': 20, 'hauts conseillants_2022': 20,
-    // 2023
-    'les gravières_2023': 20, 'gravières_2023': 20, 'lilian ladouys_2023': 20,
+    // ── 2021 primeurs — delivered 2024, ~2 ans de marché ──────────────────
+    'mangot_2021': 22,
+    'haut-brisson_2021': 30,
+    'tour saint christophe_2021': 38,
+    'clos floridène_2021': 20,           // fix: was 'floridène_2021' — never matched
+    'langoa barton_2021': 62,
+    'siaurac_2021': 20,
+    'sociando-mallet_2021': 40, 'sociando mallet_2021': 40,
+    'larrivet haut-brion_2021': 46, 'larrivet haut brion_2021': 46,
+    // ── 2022 primeurs — delivered 2025, millésime exceptionnel ────────────
+    'haut veyrac_2022': 18,
+    'larrivet haut-brion_2022': 46, 'larrivet haut brion_2022': 46,
+    'tronquoy_2022': 35,
+    'chasse-spleen_2022': 42, 'chasse spleen_2022': 42,
+    'alcée_2022': 22, 'alcee_2022': 22,
+    'cantemerle_2022': 36,
+    'laroque_2022': 42,
+    'la clef de voûte_2022': 22, 'la clef de voute_2022': 22, // fix: was 'clef de voûte_2022'
+    'la mauriane_2022': 20,
+    'prieuré-lichine_2022': 60, 'prieure-lichine_2022': 60,
+    'les hauts-conseillants_2022': 20, 'les hauts conseillants_2022': 20, // fix: was 'hauts-conseillants_2022'
+    // ── 2023 primeurs — livraison 2026, non encore livre ──────────────────
+    'les gravières_2023': 20, 'gravières_2023': 20,
+    'lilian ladouys_2023': 20,
     'chasse-spleen_2023': 30, 'chasse spleen_2023': 30,
-    'mangot_2023': 26, 'lafont-rochet_2023': 40, 'lafont rochet_2023': 40,
+    'mangot_2023': 26,
+    'lafont-rochet_2023': 40, 'lafont rochet_2023': 40,
     'prieuré-lichine_2023': 36, 'prieure-lichine_2023': 36,
     'sociando-mallet_2023': 34, 'sociando mallet_2023': 34,
     'larrivet haut-brion_2023': 36, 'larrivet haut brion_2023': 36,
     'la gaffelière_2023': 90, 'gaffelière_2023': 90, 'gaffeliere_2023': 90,
-    'gazin_2023': 75, 'les carmes haut-brion_2023': 120, 'carmes haut-brion_2023': 120,
-    'carmes haut brion_2023': 120,
-    // 2024
+    'gazin_2023': 75,
+    'les carmes haut-brion_2023': 120, 'carmes haut-brion_2023': 120, 'carmes haut brion_2023': 120,
+    // ── 2024 primeurs — livraison 2027, non encore livre ──────────────────
     'chasse-spleen_2024': 28, 'chasse spleen_2024': 28,
     'sociando-mallet_2024': 28, 'sociando mallet_2024': 28,
-    'les carmes haut-brion_2024': 95, 'carmes haut-brion_2024': 95,
-    'carmes haut brion_2024': 95,
+    'les carmes haut-brion_2024': 95, 'carmes haut-brion_2024': 95, 'carmes haut brion_2024': 95,
     'prieuré-lichine_2024': 32, 'prieure-lichine_2024': 32,
-    'brown_2024': 26, 'chevalier_2024': 50, 'grand-puy-lacoste_2024': 58,
-    'grand puy lacoste_2024': 58, 'larrivet haut-brion_2024': 34,
-    'larrivet haut brion_2024': 34, 'mangot_2024': 28, 'gazin_2024': 62,
-    // Spot wines — Burgundy Louis Jadot 2023
+    'brown_2024': 26,
+    'chevalier_2024': 50,
+    'grand-puy-lacoste_2024': 58, 'grand puy lacoste_2024': 58,
+    'larrivet haut-brion_2024': 34, 'larrivet haut brion_2024': 34,
+    'mangot_2024': 28,
+    'gazin_2024': 62,
+    // ── Vins spot — achetés en 2026 ───────────────────────────────────────
+    'de meursault_2015': 65,         // Meursault Le Limozin — 11 ans, terroir Côte de Beaune
+    'moillard-grivot_2018': 35,      // Meursault négociant — 8 ans
+    'de meursault_2018': 20,         // Bourgogne régional — 8 ans
+    'la serre_2017': 38,             // Saint-Émilion Grand Cru Classé — 9 ans
+    'sociando-mallet_2017': 44, 'sociando mallet_2017': 44, // Haut-Médoc — 9 ans
+    'sociando-mallet_2015': 52, 'sociando mallet_2015': 52, // Haut-Médoc, millésime 2015 exceptionnel
+    'famille perrin_2022': 15,       // Côtes du Rhône Nature — style frais
+    'jean-François jacouton_2020': 28, 'jean-Francois jacouton_2020': 28, // Saint-Joseph — 6 ans
+    'gazin_2016': 100,               // Pomerol — millésime 2016 excellent, 10 ans
+    'malartic-lagravière_2017': 58, 'malartic-lagraviere_2017': 58, // Pessac-Léognan GCC — 9 ans
+    'siaurac_2016': 25,              // Lalande-de-Pomerol — 10 ans
+    // ── Bourgogne Louis Jadot 2023 — clé longue dom_vinPart_vintage ───────
+    // (la clé courte dom_vintage est ambiguë pour ce domaine multi-cuvées)
     'domaine louis jadot_savigny_2023': 38,
     'domaine louis jadot_santenay_2023': 35,
-    'domaine louis jadot_monthélie_2023': 33,
-    'domaine louis jadot_monthelie_2023': 33,
+    'domaine louis jadot_monthélie_2023': 33, 'domaine louis jadot_monthelie_2023': 33,
   };
 
+  // Try domain+firstWordOfVin+vintage first (disambiguates multi-cuvée domains)
+  const vinPart = vin.split(/[\s\-]/)[0];
+  const keyLong = `${dom}_${vinPart}_${mil}`;
   const key = `${dom}_${mil}`;
+  if (known.hasOwnProperty(keyLong)) return known[keyLong];
   if (known.hasOwnProperty(key)) return known[key];
 
   // ── 2. Appellation/tier fallback — estimate from purchase price + appreciation ─
@@ -4231,20 +4299,33 @@ function renderValueTable(data) {
 
     <div class="value-rows-wrap">
       <div class="value-rows-header">
-        <span>Domaine · Millésime</span>
+        <span>Domaine · Appellation</span>
+        <span style="text-align:center">Stock</span>
         <span style="text-align:right">Achat</span>
         <span style="text-align:right">Marché</span>
         <span style="text-align:right">+/−</span>
         <span style="text-align:right">%</span>
       </div>
-      ${sorted.map(w => `
+      ${sorted.map(w => {
+        const remBtl = w.remBtl ?? w.bouteilles ?? 0;
+        const remMag = w.remMag ?? w.magnums ?? 0;
+        const stockParts = [];
+        if (remBtl > 0) stockParts.push(`${remBtl} btl`);
+        if (remMag > 0) stockParts.push(`${remMag} mag`);
+        const stockStr = stockParts.join('<br>') || '—';
+        const perBtl = w.marketPrice
+          ? `<small style="display:block;font-size:0.7rem;color:var(--muted);margin-top:2px">CHF ${w.marketPrice}/btl</small>`
+          : '';
+        return `
       <div class="wine-value-row">
-        <div class="wname">${esc(w.domaine)} <small>${w.millesime} · ${w.remBtl||w.bouteilles||0} btl${(w.remMag||w.magnums)?` · ${w.remMag||w.magnums} mag`:''}</small></div>
+        <div class="wname">${esc(w.domaine)}<small>${esc(w.vin||'')} · ${w.millesime}</small></div>
+        <span class="wv-stock">${stockStr}</span>
         <span style="text-align:right;color:var(--muted)">${w.noPurchasePrice ? '<span style="color:var(--gold-deep);font-style:italic">*</span>' : fmt(w.purchaseTotal)}</span>
-        <span style="text-align:right">${w.marketTotal != null ? fmt(w.marketTotal) : '<span style="color:var(--muted)">—</span>'}</span>
+        <span style="text-align:right">${w.marketTotal != null ? fmt(w.marketTotal) : '<span style="color:var(--muted)">—</span>'}${perBtl}</span>
         <span style="text-align:right" class="${deltaClass(w.delta)}">${w.delta != null ? (w.delta >= 0?'+':'')+fmt(w.delta) : '—'}</span>
         <span style="text-align:right;font-weight:500" class="${deltaClass(w.pct)}">${fmtPct(w.pct)}</span>
-      </div>`).join('')}
+      </div>`;
+      }).join('')}
     </div>
 
     <div style="margin-top:24px;text-align:center">
