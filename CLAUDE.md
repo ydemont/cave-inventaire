@@ -26,7 +26,7 @@ Everything lives in `index.html`, structured as three logical sections:
 
 1. **CSS** (lines ~13–1930): All styles, including CSS custom properties (`--ivory`, `--oxblood`, `--gold`, etc.) that define the Bordeaux label aesthetic. The design language is Cormorant Garamond (serif headings) + Inter (sans-serif data). Never introduce Bootstrap or Tailwind — the design system is bespoke.
 
-2. **HTML** (lines ~1930–2660): The app shell with a sidebar nav (240px fixed) and main content area. Pages are toggled via CSS classes (`active`), not routing. The six pages are: `cave` (inventory), `queboire` (what to drink wizard), `historique` (tasting log), `valeur` (portfolio value), `analyses` (charts), `primeurs` (current-year primeur campaign tracker). After the app shell closing tag, two mobile-only elements are rendered: `<header class="mobile-header">` and `<nav class="mobile-bottom-nav">` — hidden by default, activated via `@media (max-width: 600px)`.
+2. **HTML** (lines ~1930–2660): The app shell with a sidebar nav (240px fixed) and main content area. Pages are toggled via CSS classes (`active`), not routing. The seven pages are: `cave` (inventory), `queboire` (what to drink wizard), `historique` (tasting log), `cellier3d` (3D fridge visualization), `valeur` (portfolio value), `analyses` (charts), `primeurs` (current-year primeur campaign tracker). After the app shell closing tag, two mobile-only elements are rendered: `<header class="mobile-header">` and `<nav class="mobile-bottom-nav">` — hidden by default, activated via `@media (max-width: 600px)`.
 
 3. **JavaScript** (lines ~2505–end): Vanilla JS, no framework. Key globals:
    - `wines[]` — in-memory array of all wine objects (source of truth after load)
@@ -46,6 +46,7 @@ Everything lives in `index.html`, structured as three logical sections:
 - App uses camelCase (`prixBouteille`, `drinkFrom`) — DB uses snake_case (`prix_bouteille`, `drink_from`)
 - Wine type: `"primeur"` (futures, bought before delivery) or `"spot"` (already in cellar)
 - `livre: true` = physically in cellar; `livre: false` = ordered but not yet delivered
+- `shelf` (1–5), `slotCol` (1–7), `slotRow` (1–7) — optional physical position anchor for the Cellier 3D page (see below). Nullable; most records have none.
 
 ## Key Features
 
@@ -66,6 +67,15 @@ The `f_domaine` and `f_vin` fields have custom autocomplete dropdowns (`setupAut
 - A purchase table listing all wines where `type === 'primeur'` and `date` starts with the current year, sorted by château.
 - A multi-vintage tile (Bordeaux wines only, via `getRegion()`) showing châteaux held across 2+ distinct vintages. Châteaux bought this year are highlighted in gold; vintages purchased as this year's primeurs are highlighted in oxblood. Bottle counts reflect actual remaining stock using `getDrunkCount()`.
 - "This year" is always `new Date().getFullYear()` — no hardcoded year.
+
+**Cellier 3D** (`openCellier3D()`): A Three.js (CDN, r128, no build step — same pattern as Chart.js) visualization of the physical cellar, a Haier HWS247GGU1 (5 wooden shelves, 247-bottle rated capacity, ~1900×597×714mm). Each shelf is modeled as a 7×7 grid of slots (49 × 5 = 245 ≈ rated capacity — this is an estimate from product research, not the literal manual, easy to retune via `SHELF_COLS`/`SHELF_ROWS`/`SHELF_COUNT`).
+- **Position model**: a wine entry stores ONE manually-chosen anchor slot (`shelf`/`slotCol`/`slotRow`), not one coordinate per physical bottle. Its currently-remaining bottles/magnums (via `getDrunkCount`) render sequentially from that anchor, row-major (col 1→7, then next row). If a wine's count overflows the 7×7 grid, the overflow "stacks" visually above the shelf rather than spilling onto another shelf.
+- **`computeShelfOccupancy(shelfNum, excludeWineId)`** is the single shared layout algorithm — used by both the edit-modal slot picker AND the 3D renderer, so they can never drift out of sync. Fully-drunk wines are skipped automatically (no manual slot cleanup needed when a bottle is finished).
+- **Shelf numbering**: shelf 1 = top ("haut"), shelf 5 = bottom ("bas"). `cellier3DShelfY(shelfNum, shelfGap)` is the single source of truth for this mapping — used by both the shelf meshes and the bottle placement. Don't compute shelf Y positions ad hoc elsewhere.
+- **Slot picker**: the edit modal (`openEdit`/`saveWine`) has a "Position dans la cave" field group with a shelf `<select>` and a 7×7 clickable grid (`renderSlotPicker()`) showing free/occupied/selected cells live, scoped to the wine being edited via `excludeWineId`.
+- **3D scene** (`initCellier3DScene()`, lazy-initialized on first visit, not torn down/recreated on revisit — only `refreshCellier3DBottles()` re-runs): the cabinet is built from open panels (back/sides/top/bottom + a separate transparent glass front), NOT a closed box — a solid box's opaque front face would hide everything inside. Bottle colors deliberately avoid the shelf's gold-wood tone (`0x7d6024`) so they don't visually blend in.
+- **Interaction**: raycasting on pointer move/click against bottle meshes shows a floating popover (`cellier3dEditFromPopover()` etc.) with wine details and a "Modifier" button that calls the real `openEdit(id)`.
+- **Unassigned-wines banner**: wines with `shelf == null` (and still-remaining stock) are listed as clickable chips at the top of the page, via `renderCellier3DBanner()`.
 
 **Responsive inventory table**: The cave table progressively hides columns as the viewport narrows — never horizontal-scrolls on common screen sizes:
 - `≤ 1200px`: hide Note (col 10) + Bu (col 11); tighten cell padding.
@@ -99,6 +109,13 @@ Column hiding uses `#wineTable th:nth-child(N), #wineTable td:nth-child(N) { dis
 - Supabase schema changes: update `rowToWine` and `wineToRow` mappers, and the `SEED` array if the new field needs a default for existing records.
 - The `estimateMarketPrice` function's `known` dictionary needs manual updating each new vintage year (typically May–June primeur season). Keys must match the generated `dom` value exactly — `dom` strips only the `Château`/`Chateau` prefix, not articles. Always verify key matching by tracing `domaine.toLowerCase().replace(/^ch[âa]teau\s+/i,'')`. For multi-cuvée domains, use the long key format `dom_firstWordOfVin_vintage`.
 - New Edge Functions: deploy via the Supabase MCP tool (`deploy_edge_function`, project `xhokwnpplbkjtqhjicrs`). Edge functions live at `${SB_URL}/functions/v1/<name>` — do not use `sbFetch` for them (it adds `/rest/v1/` prefix); call with a plain `fetch` including the `apikey` header.
+- New 3D geometry in Cellier 3D: never build an enclosing object as a single closed `BoxGeometry` if the camera needs to see inside it — the opaque front face will completely hide the interior. Build it from individual open panels instead, with a separate transparent material for the side the camera looks through.
+
+## Known Pre-existing Issues (not yet fixed, found incidentally)
+
+- `getAccessToken()` can throw `ReferenceError: Cannot access 'authSession' before initialization` on cold load if `loadTastings()` fires before the `let authSession` declaration further down the script executes (TDZ). Harmless in practice (caught and logged), but worth cleaning up — e.g. hoist `let authSession = null;` near the top of the script.
+- The inventory table has no `id="wineTable"` wrapper element, so the `#wineTable th:nth-child(N)...` responsive column-hiding CSS rules (and the `#wineTable` reference in this file) never actually match anything; the table body's real id is `tbody`. The responsive hiding may currently be working by coincidence of other rules, or may not be working at all — needs verification.
+- The "Scanner une étiquette" block in the add/edit modal uses inline `style="background:var(--surface-2);border:1px solid var(--rule-strong)..."` — `--surface-2` and `--rule-strong` are not defined anywhere in `:root`, so they silently resolve to nothing. The `.form-grid` "full-width" fields also use a class `form-full` that doesn't match the actual CSS rule `.form-grid .full` — full-width fields in the modal are likely not spanning full width as intended.
 
 ## Appellation & Domaine Conventions
 

@@ -754,6 +754,20 @@ tbody tr:hover td.actions { opacity: 1; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-grid .full { grid-column: 1/-1; }
 
+/* Slot picker */
+.slot-picker-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  max-width: 280px; margin-top: 10px;
+}
+.slot-cell {
+  aspect-ratio: 1; border: 1px solid var(--hairline);
+  background: var(--ivory); cursor: pointer; transition: all 0.15s;
+}
+.slot-cell:hover:not(.slot-occupied):not(.slot-selected) { border-color: var(--gold); background: var(--cream); }
+.slot-cell.slot-selected { background: var(--oxblood); border-color: var(--oxblood); }
+.slot-cell.slot-occupied { background: var(--muted-soft); border-color: var(--muted-soft); cursor: not-allowed; }
+.slot-picker-hint { font-size: 0.7rem; color: var(--muted); margin-top: 8px; letter-spacing: 0.02em; }
+
 /* Buttons */
 .btn-save {
   background: var(--oxblood); border: 1px solid var(--oxblood); color: var(--ivory);
@@ -1975,8 +1989,55 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
   font-family: 'Cormorant Garamond', serif; font-style: italic;
   color: var(--muted); font-size: 1rem; padding: 32px 0; text-align: center;
 }
+
+/* ── Cellier 3D ─────────────────────────────────────────────────────────── */
+.cellier3d-banner {
+  background: var(--ivory-deep); border: 1px solid var(--hairline);
+  border-left: 3px solid var(--gold); padding: 14px 18px;
+  margin-bottom: 18px; display: none;
+}
+.cellier3d-banner-title {
+  font-family: 'Cormorant SC', serif; font-size: 0.68rem;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-deep);
+  margin-bottom: 8px;
+}
+.cellier3d-banner-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.cellier3d-banner-chip {
+  background: var(--cream); border: 1px solid var(--hairline);
+  font-family: 'Cormorant Garamond', serif; font-size: 0.82rem; color: var(--ink);
+  padding: 5px 12px; cursor: pointer; transition: all 0.15s;
+}
+.cellier3d-banner-chip:hover { border-color: var(--gold); color: var(--oxblood); }
+.cellier3d-canvas-wrap {
+  position: relative; width: 100%; height: 640px;
+  background: var(--cellar); border: 1px solid var(--hairline);
+  overflow: hidden;
+}
+.cellier3d-canvas-wrap canvas { display: block; width: 100%; height: 100%; }
+.cellier3d-popover {
+  position: absolute; display: none; pointer-events: none;
+  background: var(--cream); border: 1px solid var(--gold);
+  box-shadow: var(--shadow-lift); padding: 12px 16px;
+  font-family: 'Cormorant Garamond', serif; color: var(--ink);
+  min-width: 200px; z-index: 5;
+}
+.cellier3d-popover.show { display: block; pointer-events: auto; }
+.cellier3d-popover h4 {
+  font-size: 0.95rem; color: var(--oxblood); margin-bottom: 2px; font-weight: 500;
+}
+.cellier3d-popover p { font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; }
+.cellier3d-popover button {
+  background: var(--oxblood); color: var(--ivory); border: none;
+  padding: 6px 14px; font-family: 'Cormorant SC', serif; font-size: 0.62rem;
+  letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+}
+.cellier3d-hint {
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  color: var(--muted); font-size: 0.85rem; margin-top: 10px;
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 <!-- Intro — Wax seal -->
@@ -2096,6 +2157,10 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
       <button class="sidebar-item" data-page="historique" onclick="showPage('historique')">
         <svg class="si-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="9" cy="9" r="7"/><path d="M9 5 L9 9 L12 11"/></svg>
         Historique
+      </button>
+      <button class="sidebar-item" data-page="cellier3d" onclick="showPage('cellier3d')">
+        <svg class="si-icon" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="2" width="12" height="14"/><line x1="3" y1="6.5" x2="15" y2="6.5"/><line x1="3" y1="11" x2="15" y2="11"/></svg>
+        Cellier 3D
       </button>
 
       <div class="sidebar-section">Analyse</div>
@@ -2638,6 +2703,30 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
       <div id="primMultiVintage" style="margin-top:20px"></div>
     </section>
 
+    <!-- ═══ Page: CELLIER 3D ═══ -->
+    <section class="page" id="page-cellier3d">
+      <div class="page-header">
+        <div class="page-title-block">
+          <h1 class="page-title">Cellier<em>— Vue 3D</em></h1>
+          <span class="page-subtitle">Localisez chaque vin sur son étagère</span>
+        </div>
+      </div>
+
+      <div class="cellier3d-banner" id="cellier3dBanner">
+        <div class="cellier3d-banner-title" id="cellier3dBannerTitle"></div>
+        <div class="cellier3d-banner-list" id="cellier3dBannerList"></div>
+      </div>
+
+      <div class="cellier3d-canvas-wrap" id="cellier3dCanvasWrap">
+        <div class="cellier3d-popover" id="cellier3dPopover">
+          <h4 id="cellier3dPopTitle"></h4>
+          <p id="cellier3dPopSub"></p>
+          <button onclick="cellier3dEditFromPopover()">Modifier</button>
+        </div>
+      </div>
+      <div class="cellier3d-hint">Survolez ou touchez une bouteille pour voir le détail du vin.</div>
+    </section>
+
   </main>
 
 </div>
@@ -2659,6 +2748,9 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
   </button>
   <button class="mbn-item" data-page="historique" onclick="showPage('historique')">
     <span class="mbn-icon">📖</span><span class="mbn-label">Historique</span>
+  </button>
+  <button class="mbn-item" data-page="cellier3d" onclick="showPage('cellier3d')">
+    <span class="mbn-icon">🧊</span><span class="mbn-label">Cellier 3D</span>
   </button>
   <button class="mbn-item" data-page="valeur" onclick="showPage('valeur')">
     <span class="mbn-icon">📈</span><span class="mbn-label">Valeur</span>
@@ -2763,6 +2855,21 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
       <div class="field form-full">
         <label>Note / Commentaire</label>
         <textarea id="f_note" placeholder="Cadeau, occasion spéciale…"></textarea>
+      </div>
+      <div class="field full">
+        <label>Position dans la cave (optionnel)</label>
+        <select id="f_shelf" onchange="renderSlotPicker()">
+          <option value="">— Étagère non assignée —</option>
+          <option value="1">Étagère 1 (haut)</option>
+          <option value="2">Étagère 2</option>
+          <option value="3">Étagère 3</option>
+          <option value="4">Étagère 4</option>
+          <option value="5">Étagère 5 (bas)</option>
+        </select>
+        <input type="hidden" id="f_slotCol">
+        <input type="hidden" id="f_slotRow">
+        <div id="slotPickerGrid" class="slot-picker-grid" style="display:none"></div>
+        <div id="slotPickerHint" class="slot-picker-hint"></div>
       </div>
     </div>
     <div class="form-actions">
@@ -2889,7 +2996,8 @@ function rowToWine(r) {
     millesime: r.millesime, bouteilles: r.bouteilles, magnums: r.magnums,
     livraison: r.livraison, livre: r.livre, prixBouteille: r.prix_bouteille,
     prixMagnum: r.prix_magnum || 0, prixEstime: r.prix_estime || 0,
-    drinkFrom: r.drink_from, drinkTo: r.drink_to, note: r.note, type: r.type
+    drinkFrom: r.drink_from, drinkTo: r.drink_to, note: r.note, type: r.type,
+    shelf: r.shelf, slotCol: r.slot_col, slotRow: r.slot_row
   };
 }
 
@@ -2899,7 +3007,8 @@ function wineToRow(w) {
     millesime: w.millesime, bouteilles: w.bouteilles, magnums: w.magnums,
     livraison: w.livraison || null, livre: w.livre, prix_bouteille: w.prixBouteille || 0,
     prix_magnum: w.prixMagnum || 0, prix_estime: w.prixEstime || 0,
-    drink_from: w.drinkFrom || null, drink_to: w.drinkTo || null, note: w.note || '', type: w.type
+    drink_from: w.drinkFrom || null, drink_to: w.drinkTo || null, note: w.note || '', type: w.type,
+    shelf: w.shelf || null, slot_col: w.slotCol || null, slot_row: w.slotRow || null
   };
 }
 
@@ -3214,6 +3323,10 @@ function openEdit(id) {
   document.getElementById('f_drinkFrom').value = w.drinkFrom || '';
   document.getElementById('f_drinkTo').value = w.drinkTo || '';
   document.getElementById('f_note').value = w.note || '';
+  document.getElementById('f_shelf').value = w.shelf || '';
+  document.getElementById('f_slotCol').value = w.slotCol || '';
+  document.getElementById('f_slotRow').value = w.slotRow || '';
+  renderSlotPicker();
   document.getElementById('scanSection').style.display = 'none';
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -3231,10 +3344,54 @@ function toggleMagnumPrice() {
 
 function clearForm() {
   ['f_domaine','f_vin','f_millesime','f_date','f_bouteilles','f_magnums',
-   'f_prix','f_prix_magnum','f_livraison','f_drinkFrom','f_drinkTo','f_note'].forEach(id => {
+   'f_prix','f_prix_magnum','f_livraison','f_drinkFrom','f_drinkTo','f_note',
+   'f_shelf','f_slotCol','f_slotRow'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('f_prix_magnum_wrap').style.display = 'none';
+  renderSlotPicker();
+}
+
+// ── SLOT PICKER ──────────────────────────────────────────────────────────
+function renderSlotPicker() {
+  const shelfVal = document.getElementById('f_shelf').value;
+  const grid = document.getElementById('slotPickerGrid');
+  const hint = document.getElementById('slotPickerHint');
+  if (!shelfVal) {
+    grid.style.display = 'none';
+    grid.innerHTML = '';
+    hint.textContent = '';
+    document.getElementById('f_slotCol').value = '';
+    document.getElementById('f_slotRow').value = '';
+    return;
+  }
+  const shelfNum = parseInt(shelfVal);
+  const { occupied } = computeShelfOccupancy(shelfNum, editId);
+  const selCol = parseInt(document.getElementById('f_slotCol').value) || null;
+  const selRow = parseInt(document.getElementById('f_slotRow').value) || null;
+  grid.innerHTML = '';
+  grid.style.display = 'grid';
+  for (let row = 1; row <= SHELF_ROWS; row++) {
+    for (let col = 1; col <= SHELF_COLS; col++) {
+      const key = col + ',' + row;
+      const isOccupied = occupied.has(key);
+      const isSelected = col === selCol && row === selRow;
+      const cell = document.createElement('div');
+      cell.className = 'slot-cell' + (isSelected ? ' slot-selected' : (isOccupied ? ' slot-occupied' : ''));
+      cell.title = `Colonne ${col} · Rangée ${row}`;
+      if (!isOccupied) {
+        cell.onclick = () => {
+          document.getElementById('f_slotCol').value = col;
+          document.getElementById('f_slotRow').value = row;
+          renderSlotPicker();
+        };
+      }
+      grid.appendChild(cell);
+    }
+  }
+  hint.textContent = (selCol && selRow)
+    ? `Position choisie : étagère ${shelfNum}, colonne ${selCol}, rangée ${selRow} — les bouteilles suivantes se placent automatiquement à la suite.`
+    : 'Cliquez sur une case libre pour choisir le point de départ de ce vin sur l’étagère.';
 }
 
 function saveWine() {
@@ -3258,6 +3415,9 @@ function saveWine() {
     drinkFrom: parseInt(document.getElementById('f_drinkFrom').value) || null,
     drinkTo: parseInt(document.getElementById('f_drinkTo').value) || null,
     note: document.getElementById('f_note').value.trim(),
+    shelf: parseInt(document.getElementById('f_shelf').value) || null,
+    slotCol: parseInt(document.getElementById('f_slotCol').value) || null,
+    slotRow: parseInt(document.getElementById('f_slotRow').value) || null,
   };
 
   // If drinking window is missing, try to look it up online before saving
@@ -3380,7 +3540,7 @@ function toast(msg) {
 // ── PAGE NAVIGATION ────────────────────────────────────────────────────────
 const PAGE_TITLES = {
   cave: 'Inventaire', queboire: 'Que boire', historique: 'Historique',
-  valeur: 'Valeur', analyses: 'Analyses', primeurs: 'Primeurs'
+  valeur: 'Valeur', analyses: 'Analyses', primeurs: 'Primeurs', cellier3d: 'Cellier 3D'
 };
 
 function showPage(name) {
@@ -3415,6 +3575,7 @@ function showPage(name) {
   else if (name === 'historique') showHistory();
   else if (name === 'queboire') openWhatToDrink();
   else if (name === 'primeurs') openPrimeurs();
+  else if (name === 'cellier3d') openCellier3D();
 }
 
 // ── TASTING LOG ────────────────────────────────────────────────────────────
@@ -3454,6 +3615,49 @@ function getDrunkCount(wineId) {
   const btl = list.filter(t => t.format !== 'magnum').reduce((s,t) => s+(t.qty||1), 0);
   const mag = list.filter(t => t.format === 'magnum').reduce((s,t) => s+(t.qty||1), 0);
   return { btl, mag, total: btl + mag };
+}
+
+// ── CELLIER 3D — SHARED SHELF LAYOUT ────────────────────────────────────────
+// Haier HWS247GGU1: 5 shelves, each modeled as a 7×7 grid of bottle slots
+// (49 × 5 = 245 ≈ rated 247-bottle capacity). A wine entry stores ONE manually
+// chosen anchor slot (shelf/slotCol/slotRow); its currently-remaining bottles
+// and magnums render sequentially from that anchor, row-major (col 1→7, then
+// next row). If a wine's bottle count overflows the 7×7 grid past its anchor,
+// the extra bottles "stack" visually above the shelf surface instead of
+// spilling onto another shelf — keeps the algorithm simple and makes
+// over-assignment obvious rather than silently wrong.
+const SHELF_COLS = 7, SHELF_ROWS = 7, SHELF_COUNT = 5;
+
+function computeShelfOccupancy(shelfNum, excludeWineId) {
+  const cells = [];           // { wineId, col, row, stack, isMagnum }
+  const occupied = new Set(); // "col,row" keys claimed within the base 7×7 grid (stack 0)
+
+  const candidates = wines
+    .filter(w => w.shelf === shelfNum && w.id !== excludeWineId && w.slotCol && w.slotRow)
+    .sort((a, b) => (a.slotRow - b.slotRow) || (a.slotCol - b.slotCol));
+
+  candidates.forEach(w => {
+    const drunk = getDrunkCount(w.id);
+    const remBtl = Math.max(0, (w.bouteilles || 0) - drunk.btl);
+    const remMag = Math.max(0, (w.magnums || 0) - drunk.mag);
+    const total = remBtl + remMag;
+    if (total === 0) return; // fully drunk — frees its slots automatically
+
+    let flat = (w.slotRow - 1) * SHELF_COLS + (w.slotCol - 1);
+    for (let i = 0; i < total; i++) {
+      const perShelf = SHELF_COLS * SHELF_ROWS;
+      const stack = Math.floor(flat / perShelf);
+      const localFlat = flat % perShelf;
+      const row = Math.floor(localFlat / SHELF_COLS) + 1;
+      const col = (localFlat % SHELF_COLS) + 1;
+      const isMagnum = i >= remBtl;
+      cells.push({ wineId: w.id, col, row, stack, isMagnum });
+      if (stack === 0) occupied.add(col + ',' + row);
+      flat++;
+    }
+  });
+
+  return { cells, occupied };
 }
 
 function openDrink(id) {
@@ -5139,6 +5343,240 @@ function openPrimeurs() {
         </tbody>
       </table>
     </div>`;
+}
+
+// ── CELLIER 3D ───────────────────────────────────────────────────────────
+// Three.js scene of the physical Haier HWS247GGU1: a cabinet with 5 shelves,
+// each a 7×7 grid (see computeShelfOccupancy/SHELF_COLS/SHELF_ROWS above).
+// Lazily initialised on first visit; subsequent visits just refresh bottles.
+let c3d = null; // { scene, camera, renderer, bottleGroup, raycaster, hovered, fridgeW, fridgeH, fridgeD, shelfGap }
+
+function openCellier3D() {
+  renderCellier3DBanner();
+  if (!c3d) {
+    initCellier3DScene();
+  }
+  refreshCellier3DBottles();
+}
+
+function renderCellier3DBanner() {
+  const unassigned = wines.filter(w => {
+    if (w.shelf) return false;
+    const drunk = getDrunkCount(w.id);
+    const remBtl = Math.max(0, (w.bouteilles || 0) - drunk.btl);
+    const remMag = Math.max(0, (w.magnums || 0) - drunk.mag);
+    return remBtl + remMag > 0;
+  });
+  const banner = document.getElementById('cellier3dBanner');
+  const titleEl = document.getElementById('cellier3dBannerTitle');
+  const listEl = document.getElementById('cellier3dBannerList');
+  if (!unassigned.length) { banner.style.display = 'none'; return; }
+  banner.style.display = 'block';
+  titleEl.textContent = `${unassigned.length} vin(s) non assigné(s) à une étagère`;
+  listEl.innerHTML = unassigned.map(w =>
+    `<span class="cellier3d-banner-chip" onclick="openEdit(${w.id})">${esc(w.domaine)} ${w.millesime || ''}</span>`
+  ).join('');
+}
+
+function initCellier3DScene() {
+  const wrap = document.getElementById('cellier3dCanvasWrap');
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0f0a08); // --cellar
+
+  const camera = new THREE.PerspectiveCamera(40, wrap.clientWidth / wrap.clientHeight, 0.1, 100);
+  camera.position.set(2.6, 2.6, 4.6);
+  camera.lookAt(0, 1.6, 0);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  wrap.insertBefore(renderer.domElement, wrap.firstChild);
+
+  // Soft, clean lighting — no harsh shadows
+  scene.add(new THREE.AmbientLight(0xf4eedd, 0.7));
+  const key = new THREE.DirectionalLight(0xffffff, 0.9);
+  key.position.set(3, 5, 4);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0x9c7c38, 0.3);
+  fill.position.set(-3, 1, -2);
+  scene.add(fill);
+
+  // Cabinet (proportions from the real 1900x597x714mm unit, scaled down).
+  // Built as open-front panels (back/sides/top/bottom), not a closed box —
+  // a solid box would hide the shelves/bottles behind its own front face.
+  const fridgeW = 2.4, fridgeH = 3.6, fridgeD = 1.6;
+  const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x1a1310, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide });
+
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(fridgeW, fridgeH), cabinetMat);
+  back.position.set(0, fridgeH / 2, -fridgeD / 2);
+  scene.add(back);
+
+  const left = new THREE.Mesh(new THREE.PlaneGeometry(fridgeD, fridgeH), cabinetMat);
+  left.rotation.y = Math.PI / 2;
+  left.position.set(-fridgeW / 2, fridgeH / 2, 0);
+  scene.add(left);
+
+  const right = new THREE.Mesh(new THREE.PlaneGeometry(fridgeD, fridgeH), cabinetMat);
+  right.rotation.y = -Math.PI / 2;
+  right.position.set(fridgeW / 2, fridgeH / 2, 0);
+  scene.add(right);
+
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(fridgeW, fridgeD), cabinetMat);
+  top.rotation.x = Math.PI / 2;
+  top.position.set(0, fridgeH, 0);
+  scene.add(top);
+
+  const bottom = new THREE.Mesh(new THREE.PlaneGeometry(fridgeW, fridgeD), cabinetMat);
+  bottom.rotation.x = Math.PI / 2;
+  bottom.position.set(0, 0, 0);
+  scene.add(bottom);
+
+  // Glass front — transparent so the interior stays visible
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x2d2220, roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.1, side: THREE.DoubleSide });
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(fridgeW, fridgeH), glassMat);
+  glass.position.set(0, fridgeH / 2, fridgeD / 2);
+  scene.add(glass);
+
+  // 5 shelves, evenly spaced. Shelf 1 = top ("haut"), shelf 5 = bottom ("bas") —
+  // see cellier3DShelfY, the single source of truth for this mapping, also used
+  // by bottle placement so shelves and bottles never drift out of sync.
+  const shelfMat = new THREE.MeshStandardMaterial({ color: 0x7d6024, roughness: 0.8 }); // --gold-deep, wood-ish
+  const shelfThickness = 0.05;
+  const shelfGap = (fridgeH - 0.2) / SHELF_COUNT;
+  for (let shelfNum = 1; shelfNum <= SHELF_COUNT; shelfNum++) {
+    const y = cellier3DShelfY(shelfNum, shelfGap);
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(fridgeW * 0.92, shelfThickness, fridgeD * 0.92), shelfMat);
+    shelf.position.set(0, y, 0);
+    scene.add(shelf);
+  }
+
+  const bottleGroup = new THREE.Group();
+  scene.add(bottleGroup);
+
+  const raycaster = new THREE.Raycaster();
+
+  c3d = { scene, camera, renderer, bottleGroup, raycaster, hovered: null, fridgeW, fridgeH, fridgeD, shelfGap, wrap };
+
+  renderer.domElement.addEventListener('pointermove', onCellier3DPointerMove);
+  renderer.domElement.addEventListener('click', onCellier3DClick);
+  window.addEventListener('resize', onCellier3DResize);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+function onCellier3DResize() {
+  if (!c3d) return;
+  const wrap = c3d.wrap;
+  c3d.camera.aspect = wrap.clientWidth / wrap.clientHeight;
+  c3d.camera.updateProjectionMatrix();
+  c3d.renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+}
+
+// Single source of truth for shelf number → vertical position: shelf 1 is the
+// top shelf ("haut"), shelf 5 is the bottom ("bas") — used by both the shelf
+// meshes themselves and bottle placement so they can never drift out of sync.
+function cellier3DShelfY(shelfNum, shelfGap) {
+  return 0.15 + (SHELF_COUNT - shelfNum) * shelfGap;
+}
+
+// Maps a shelf's (col,row,stack) grid cell to a 3D position inside the cabinet
+function cellier3DSlotPosition(shelf, col, row, stack) {
+  const { fridgeW, fridgeD, shelfGap } = c3d;
+  const usableW = fridgeW * 0.88, usableD = fridgeD * 0.82;
+  const x = -usableW / 2 + (col - 0.5) * (usableW / SHELF_COLS);
+  const z = -usableD / 2 + (row - 0.5) * (usableD / SHELF_ROWS);
+  const y = cellier3DShelfY(shelf, shelfGap) + 0.05 + stack * 0.12;
+  return { x, y, z };
+}
+
+function refreshCellier3DBottles() {
+  if (!c3d) return;
+  const { bottleGroup } = c3d;
+  while (bottleGroup.children.length) bottleGroup.remove(bottleGroup.children[0]);
+
+  const bottleRadius = 0.045, bottleLen = 0.22;
+  // Wine-glass-like hues, deliberately avoiding the shelf's gold-wood tone
+  // (0x7d6024) so bottles never visually blend into the shelves.
+  const colors = [0x5c0b1a, 0x2f4d33, 0x8b1928, 0x1f2e1f, 0x3e0611];
+
+  for (let shelf = 1; shelf <= SHELF_COUNT; shelf++) {
+    const { cells } = computeShelfOccupancy(shelf, null);
+    cells.forEach(cell => {
+      const radius = cell.isMagnum ? bottleRadius * 1.5 : bottleRadius;
+      const len = cell.isMagnum ? bottleLen * 1.3 : bottleLen;
+      const geo = new THREE.CylinderGeometry(radius, radius, len, 16);
+      const color = colors[cell.wineId % colors.length];
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.15 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.rotation.x = Math.PI / 2; // lying flat, axis along depth
+      const pos = cellier3DSlotPosition(shelf, cell.col, cell.row, cell.stack);
+      mesh.position.set(pos.x, pos.y + radius, pos.z);
+      mesh.userData.wineId = cell.wineId;
+      bottleGroup.add(mesh);
+    });
+  }
+}
+
+function cellier3DPointerToNDC(evt) {
+  const rect = c3d.renderer.domElement.getBoundingClientRect();
+  return new THREE.Vector2(
+    ((evt.clientX - rect.left) / rect.width) * 2 - 1,
+    -((evt.clientY - rect.top) / rect.height) * 2 + 1
+  );
+}
+
+function cellier3DShowPopover(wineId, evt) {
+  const w = wines.find(x => x.id === wineId);
+  if (!w) return;
+  const drunk = getDrunkCount(w.id);
+  const remBtl = Math.max(0, (w.bouteilles || 0) - drunk.btl);
+  const remMag = Math.max(0, (w.magnums || 0) - drunk.mag);
+  const pop = document.getElementById('cellier3dPopover');
+  document.getElementById('cellier3dPopTitle').textContent = `${w.domaine} ${w.millesime || ''}`;
+  const fenetre = (w.drinkFrom && w.drinkTo) ? `Boire ${w.drinkFrom}–${w.drinkTo} · ` : '';
+  document.getElementById('cellier3dPopSub').textContent = `${w.vin || ''} · ${fenetre}${remBtl} btl, ${remMag} mag restants`;
+  pop.dataset.wineId = String(wineId);
+  const rect = c3d.wrap.getBoundingClientRect();
+  pop.style.left = Math.min(evt.clientX - rect.left + 12, rect.width - 220) + 'px';
+  pop.style.top = Math.max(evt.clientY - rect.top - 60, 8) + 'px';
+  pop.classList.add('show');
+}
+
+function cellier3DHidePopover() {
+  document.getElementById('cellier3dPopover').classList.remove('show');
+}
+
+function onCellier3DPointerMove(evt) {
+  if (!c3d) return;
+  const ndc = cellier3DPointerToNDC(evt);
+  c3d.raycaster.setFromCamera(ndc, c3d.camera);
+  const hits = c3d.raycaster.intersectObjects(c3d.bottleGroup.children);
+  if (hits.length) {
+    c3d.renderer.domElement.style.cursor = 'pointer';
+    cellier3DShowPopover(hits[0].object.userData.wineId, evt);
+  } else {
+    c3d.renderer.domElement.style.cursor = 'default';
+    cellier3DHidePopover();
+  }
+}
+
+function onCellier3DClick(evt) {
+  if (!c3d) return;
+  const ndc = cellier3DPointerToNDC(evt);
+  c3d.raycaster.setFromCamera(ndc, c3d.camera);
+  const hits = c3d.raycaster.intersectObjects(c3d.bottleGroup.children);
+  if (hits.length) cellier3DShowPopover(hits[0].object.userData.wineId, evt);
+}
+
+function cellier3dEditFromPopover() {
+  const id = parseInt(document.getElementById('cellier3dPopover').dataset.wineId);
+  if (!id) return;
+  cellier3DHidePopover();
+  openEdit(id);
 }
 
 initAuth();
