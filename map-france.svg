@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 560 560" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <filter id="mapGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="3" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <pattern id="mapHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+                <line x1="0" y1="0" x2="0" y2="6" stroke="rgba(156,124,56,0.18)" stroke-width="1"/>
+              </pattern>
+            </defs>
+
+            <!-- France outline — real geographic coordinates (equirectangular, cos47° aspect ratio) -->
+            <!-- projection: x=67+(lon+5.1)*32, y=73+(51.1-lat)*46.9 -->
+            <path class="france-outline" d="
+              M 281,84 L 306,76 L 333,86 L 416,117 L 433,150
+              L 492,173 L 478,191 L 473,240
+              Q 450,258 427,273 Q 425,295 427,303
+              L 453,317 Q 453,355 451,388
+              L 462,418 Q 434,440 402,439
+              Q 374,437 349,434 L 323,467
+              Q 275,480 229,479 L 173,436
+              L 196,332 L 193,305 L 161,253 L 131,243
+              L 79,217 L 87,200 L 96,186 L 108,191 L 142,195 L 167,188
+              L 178,142 Q 207,147 234,149 L 265,128 L 282,90 Z"
+              fill="rgba(239,228,199,0.4)" stroke="rgba(156,124,56,0.35)" stroke-width="1.2"/>
+
+            <!-- Regions — geographically positioned -->
+
+            <!-- Champagne ~49.25°N 4.0°E → (359,162) -->
+            <g class="region-group" data-region="Champagne">
+              <path class="region-shape" d="M 332,162 Q 332,142 359,142 Q 386,142 386,162 Q 386,182 359,182 Q 332,182 332,162 Z"/>
+              <text class="region-label" x="359" y="166" text-anchor="middle">Champagne</text>
+            </g>
+
+            <!-- Alsace ~48.5°N 7.5°E → (464,198) narrow strip on Rhine -->
+            <g class="region-group" data-region="Alsace">
+              <path class="region-shape" d="M 452,198 Q 452,176 464,176 Q 476,176 476,198 Q 476,220 464,220 Q 452,220 452,198 Z"/>
+              <text class="region-label" x="464" y="202" text-anchor="middle">Alsace</text>
+            </g>
+
+            <!-- Loire ~47.3°N 0.1°E → (230,251) elongated E-W -->
+            <g class="region-group" data-region="Loire">
+              <path class="region-shape" d="M 190,251 Q 190,233 230,233 Q 270,233 270,251 Q 270,269 230,269 Q 190,269 190,251 Z"/>
+              <text class="region-label" x="230" y="255" text-anchor="middle">Loire</text>
+            </g>
+
+            <!-- Bourgogne ~47.0°N 4.85°E → (382,268) -->
+            <g class="region-group" data-region="Bourgogne">
+              <path class="region-shape" d="M 357,268 Q 357,242 382,242 Q 407,242 407,268 Q 407,294 382,294 Q 357,294 357,268 Z"/>
+              <text class="region-label" x="382" y="272" text-anchor="middle">Bourgogne</text>
+            </g>
+
+            <!-- Bordeaux ~45.0°N -0.35°E → (218,359) -->
+            <g class="region-group has-detail" data-region="Bordeaux" onclick="switchMapView('bordeaux')">
+              <path class="region-shape" d="M 193,359 Q 193,335 220,333 Q 252,331 256,357 Q 258,385 228,388 Q 193,386 193,359 Z"/>
+              <text class="region-label" x="220" y="366" text-anchor="middle">Bordeaux</text>
+              <circle class="zoom-indicator" cx="250" cy="343" r="9" fill="var(--gold)" stroke="var(--ivory)" stroke-width="1.5"/>
+              <text class="zoom-indicator-text" x="250" y="347" text-anchor="middle" fill="#FAF6EC" font-family="'Cormorant SC',serif" font-size="12" font-weight="700" pointer-events="none">+</text>
+            </g>
+
+            <!-- Rhône ~45.1°N 4.85°E → (385,354) elongated N-S -->
+            <g class="region-group" data-region="Rhône">
+              <path class="region-shape" d="M 362,354 Q 362,328 385,328 Q 408,328 408,354 Q 408,380 385,380 Q 362,380 362,354 Z"/>
+              <text class="region-label" x="385" y="358" text-anchor="middle">Rhône</text>
+            </g>
+
+            <!-- Provence ~43.55°N 5.5°E → (405,428) -->
+            <g class="region-group" data-region="Provence">
+              <path class="region-shape" d="M 375,428 Q 375,412 405,412 Q 435,412 435,428 Q 435,444 405,444 Q 375,444 375,428 Z"/>
+              <text class="region-label" x="405" y="432" text-anchor="middle">Provence</text>
+            </g>
+
+            <!-- Languedoc ~43.6°N 3.4°E → (340,426) -->
+            <g class="region-group" data-region="Languedoc">
+              <path class="region-shape" d="M 306,426 Q 306,408 340,408 Q 374,408 374,426 Q 374,444 340,444 Q 306,444 306,426 Z"/>
+              <text class="region-label" x="340" y="430" text-anchor="middle">Languedoc</text>
+            </g>
+
+            <!-- Jura/Savoie (E) -->
+            <!-- Jura-Savoie ~46.9°N 5.75°E → (414,270) narrow strip -->
+            <g class="region-group" data-region="Jura-Savoie">
+              <path class="region-shape" d="M 403,270 Q 403,250 418,250 Q 433,250 433,270 Q 433,292 418,292 Q 403,292 403,270 Z"/>
+              <text class="region-label" x="418" y="274" text-anchor="middle">Jura</text>
+            </g>
+
+          </svg>

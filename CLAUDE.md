@@ -8,6 +8,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Cave — Inventaire** is a single-page wine cellar management PWA for a private Bordeaux-focused collection. It is entirely self-contained in one file: `index.html`. There is no build system, no npm, no bundler — just open the file in a browser or serve it statically.
 
+## Second App: Cave — YD (mobile)
+
+There is a **second, separate app** deployed at `wine-app-yd.netlify.app` (Netlify site id `bdc28751-6d21-4eda-9493-d61fb9fba445`), built with Claude Design and preferred by the user on phone for its readability. It has no relation to `index.html` architecturally:
+
+- Source lives at `App/Cave-YD-mobile.html` — a React app loaded via in-browser Babel (`<script type="text/babel">`, CDN React/ReactDOM), not vanilla JS.
+- It is a **self-contained "bundler" export**: all JS/CSS/font/image assets are inlined as base64 in a `<script type="__bundler/manifest">` block (UUID → `{mime, compressed, data}`), and a small bootstrap script (`__bundler_loading` / `DOMContentLoaded` handler) unpacks them into `blob:` URLs at runtime and injects real `<script>`/`<link>` tags in dependency order. This is what makes the file work standalone from a single upload — do not "clean up" the manifest/template scripts, they are load-bearing.
+- **Important history**: earlier exports (June 9 `Cave-YD-app.html`, and a June 17 manual Netlify drag-and-drop) only contained the shell HTML referencing external blob-UUID asset URLs with no actual asset content — those were broken (404s on every script/font) both locally and once deployed. Always verify a new export actually contains a populated `__bundler/manifest` (not an `ext_resources` list pointing elsewhere) before treating it as deployable.
+- **Redeploying**: Netlify's site-level MCP `deploy-site` tool takes no directory/path argument and isn't reliable for this single-file, non-git-linked site (it timed out / 502'd when tried). The verified working method is the raw Netlify API digest-deploy flow, run manually via `curl` with a user-supplied personal access token (`app.netlify.com/user/applications`):
+  1. `POST /api/v1/sites/{site_id}/deploys` with `{"files": {"/index.html": "<sha1 of file>"}}`
+  2. `PUT /api/v1/deploys/{deploy_id}/files/index.html` with the raw file bytes as body
+  3. `POST /api/v1/sites/{site_id}/deploys/{deploy_id}/restore` to publish it live
+  The token is only needed for the duration of the deploy; the user can revoke it after.
+- The Netlify project `my-cellar-yd` (site id `af0c6c49-008c-4578-a41e-c135b25a7c5b`) is the deployed copy of this repo's `index.html` — the laptop-preferred, more detailed app.
+
 ## Running the App
 
 To develop locally, serve the file with any static HTTP server:

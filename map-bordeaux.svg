@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 560 560" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="gironde" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#8FA7B8" stop-opacity="0.35"/>
+                <stop offset="100%" stop-color="#6B8A9E" stop-opacity="0.55"/>
+              </linearGradient>
+            </defs>
+
+            <!-- France silhouette for context (faint, no fill) -->
+            <g transform="translate(-220,-280) scale(1.7)" opacity="0.2">
+              <path d="M 200,60 L 280,50 L 340,80 L 400,100 L 430,160 L 460,220 L 470,300 L 450,380 L 410,440 L 360,490 L 280,510 L 200,495 L 140,460 L 100,400 L 80,320 L 90,240 L 120,160 L 160,100 Z"
+                fill="none" stroke="var(--gold)" stroke-width="0.6" stroke-dasharray="4 3"/>
+              <!-- Marker showing Bordeaux position within France -->
+              <circle cx="148" cy="368" r="18" fill="none" stroke="var(--oxblood)" stroke-width="0.5" stroke-dasharray="2 2" opacity="0.6"/>
+            </g>
+
+            <!-- Bordeaux region outline -->
+            <path class="bordeaux-outline" d="M 80,80 L 240,60 L 400,100 L 480,180 L 500,340 L 460,460 L 340,500 L 180,490 L 80,420 L 60,280 L 60,160 Z"
+              fill="rgba(239,228,199,0.4)" stroke="rgba(156,124,56,0.35)" stroke-width="1.2"/>
+
+            <!-- Rivers defining Left/Right Bank -->
+            <path d="M 240,80 L 250,140 L 230,200 L 210,260 L 180,310 L 140,360 L 110,400 L 90,420"
+              fill="none" stroke="url(#gironde)" stroke-width="14" stroke-linecap="round" opacity="0.7"/>
+            <path d="M 210,260 L 250,310 L 290,370 L 330,430 L 360,470"
+              fill="none" stroke="url(#gironde)" stroke-width="10" stroke-linecap="round" opacity="0.6"/>
+            <path d="M 210,260 L 280,250 L 350,255 L 410,265"
+              fill="none" stroke="url(#gironde)" stroke-width="10" stroke-linecap="round" opacity="0.6"/>
+
+            <!-- LEFT BANK (Médoc to Graves/Sauternes) -->
+
+            <g class="region-group" data-region="Saint-Estèphe" data-parent="Bordeaux">
+              <path class="region-shape" d="M 135,95 Q 180,85 200,110 Q 205,135 180,140 Q 145,142 130,125 Q 125,105 135,95 Z"/>
+              <text class="region-label" x="165" y="117" text-anchor="middle">St-Estèphe</text>
+            </g>
+            <g class="region-group" data-region="Pauillac" data-parent="Bordeaux">
+              <path class="region-shape" d="M 140,145 Q 185,140 205,165 Q 208,190 185,195 Q 150,198 135,175 Q 130,155 140,145 Z"/>
+              <text class="region-label" x="170" y="172" text-anchor="middle">Pauillac</text>
+            </g>
+            <g class="region-group" data-region="Saint-Julien" data-parent="Bordeaux">
+              <path class="region-shape" d="M 145,200 Q 190,195 210,218 Q 212,238 192,242 Q 160,245 145,225 Q 140,210 145,200 Z"/>
+              <text class="region-label" x="175" y="222" text-anchor="middle">St-Julien</text>
+            </g>
+            <g class="region-group" data-region="Haut-Médoc" data-parent="Bordeaux">
+              <path class="region-shape" d="M 100,250 Q 140,245 165,255 Q 165,275 145,280 Q 110,282 95,272 Q 88,258 100,250 Z"/>
+              <text class="region-label" x="130" y="268" text-anchor="middle">Haut-Médoc</text>
+            </g>
+            <g class="region-group" data-region="Moulis" data-parent="Bordeaux">
+              <path class="region-shape" d="M 110,295 Q 140,292 155,308 Q 152,322 135,325 Q 115,325 105,315 Q 100,300 110,295 Z"/>
+              <text class="region-label" x="130" y="312" text-anchor="middle">Moulis</text>
+            </g>
+            <g class="region-group" data-region="Margaux" data-parent="Bordeaux">
+              <path class="region-shape" d="M 150,335 Q 195,330 215,355 Q 215,378 190,382 Q 155,385 142,362 Q 138,345 150,335 Z"/>
+              <text class="region-label" x="180" y="360" text-anchor="middle">Margaux</text>
+            </g>
+            <g class="region-group" data-region="Pessac-Léognan" data-parent="Bordeaux">
+              <path class="region-shape" d="M 180,395 Q 225,390 250,412 Q 252,435 225,440 Q 190,442 175,420 Q 170,402 180,395 Z"/>
+              <text class="region-label" x="212" y="418" text-anchor="middle">Pessac-Léognan</text>
+            </g>
+            <g class="region-group" data-region="Graves" data-parent="Bordeaux">
+              <path class="region-shape" d="M 225,455 Q 275,450 300,470 Q 300,488 270,492 Q 235,492 220,478 Q 215,462 225,455 Z"/>
+              <text class="region-label" x="260" y="475" text-anchor="middle">Graves</text>
+            </g>
+            <g class="region-group" data-region="Sauternes" data-parent="Bordeaux">
+              <path class="region-shape" d="M 305,465 Q 335,460 350,478 Q 348,495 325,498 Q 305,495 298,482 Q 295,470 305,465 Z"/>
+              <text class="region-label" x="325" y="482" text-anchor="middle">Sauternes</text>
+            </g>
+
+            <!-- RIGHT BANK -->
+
+            <g class="region-group" data-region="Pomerol" data-parent="Bordeaux">
+              <path class="region-shape" d="M 345,210 Q 380,205 395,225 Q 392,243 370,247 Q 345,246 335,230 Q 332,215 345,210 Z"/>
+              <text class="region-label" x="365" y="230" text-anchor="middle">Pomerol</text>
+            </g>
+            <g class="region-group" data-region="Lalande-de-Pomerol" data-parent="Bordeaux">
+              <path class="region-shape" d="M 350,170 Q 385,165 402,185 Q 400,202 375,205 Q 350,205 340,190 Q 338,175 350,170 Z"/>
+              <text class="region-label" x="370" y="190" text-anchor="middle">Lalande</text>
+            </g>
+            <g class="region-group" data-region="Saint-Émilion" data-parent="Bordeaux">
+              <path class="region-shape" d="M 400,230 Q 440,225 460,248 Q 458,268 435,272 Q 400,270 390,250 Q 388,235 400,230 Z"/>
+              <text class="region-label" x="425" y="253" text-anchor="middle">St-Émilion</text>
+            </g>
+            <g class="region-group" data-region="Castillon" data-parent="Bordeaux">
+              <path class="region-shape" d="M 465,250 Q 495,245 510,265 Q 508,282 485,285 Q 465,282 458,268 Q 456,255 465,250 Z"/>
+              <text class="region-label" x="483" y="270" text-anchor="middle">Castillon</text>
+            </g>
+            <g class="region-group" data-region="Fronsac" data-parent="Bordeaux">
+              <path class="region-shape" d="M 310,220 Q 335,217 345,232 Q 342,245 325,248 Q 308,247 302,235 Q 300,224 310,220 Z"/>
+              <text class="region-label" x="323" y="236" text-anchor="middle">Fronsac</text>
+            </g>
+            <g class="region-group" data-region="Entre-Deux-Mers" data-parent="Bordeaux">
+              <path class="region-shape" d="M 300,310 Q 360,305 395,325 Q 395,355 355,365 Q 300,365 285,345 Q 278,325 300,310 Z"/>
+              <text class="region-label" x="340" y="338" text-anchor="middle">Entre-Deux-Mers</text>
+            </g>
+            <g class="region-group" data-region="Côtes de Bordeaux" data-parent="Bordeaux">
+              <path class="region-shape" d="M 285,120 Q 330,115 355,140 Q 355,165 325,170 Q 285,170 275,145 Q 270,125 285,120 Z"/>
+              <text class="region-label" x="315" y="144" text-anchor="middle">Côtes de Bx</text>
+            </g>
+            <g class="region-group" data-region="Bordeaux générique" data-parent="Bordeaux">
+              <path class="region-shape" d="M 385,400 Q 430,395 450,418 Q 448,440 420,445 Q 385,442 375,422 Q 372,405 385,400 Z"/>
+              <text class="region-label" x="410" y="423" text-anchor="middle">Bordeaux AOC</text>
+            </g>
+
+            <!-- Bordeaux city marker -->
+            <circle cx="195" cy="385" r="3.5" fill="#1A1210" opacity="0.6"/>
+            <circle cx="195" cy="385" r="7" fill="none" stroke="#1A1210" stroke-width="0.5" opacity="0.3"/>
+            <text x="205" y="388" font-family="'Cormorant Garamond',serif" font-style="italic" font-size="10" fill="#4E3B30">Bordeaux</text>
+
+            <!-- Bank labels -->
+            <text x="115" y="445" font-family="'Cormorant SC',serif" font-size="9" letter-spacing="3" fill="#8A7565" opacity="0.6">RIVE GAUCHE</text>
+            <text x="400" y="325" font-family="'Cormorant SC',serif" font-size="9" letter-spacing="3" fill="#8A7565" opacity="0.6">RIVE DROITE</text>
+
+          </svg>
