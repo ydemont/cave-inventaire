@@ -48,7 +48,12 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
   color:var(--ink); -webkit-font-smoothing:antialiased;
 }
-button{ font:inherit; -webkit-appearance:none; appearance:none; }
+/* iOS Safari renders unstyled <button> text in its default system-blue tint
+   unless color is set explicitly — without this, every button (including
+   wine-name rows) picks up blue text instead of inheriting the page's ink
+   color. Buttons that want a different color (e.g. .primary-btn's white)
+   still win via their own higher-specificity class rule. */
+button{ font:inherit; color:inherit; -webkit-appearance:none; appearance:none; background:none; border:none; }
 ::selection{ background:var(--wine-soft); }
 .serif{ font-family:"Cormorant Garamond",Georgia,serif; }
 .tnum{ font-variant-numeric:tabular-nums; }
@@ -213,6 +218,13 @@ button{ font:inherit; -webkit-appearance:none; appearance:none; }
 /* primeurs */
 .yearchip{ padding:7px 15px; border-radius:99px; flex-shrink:0; border:1px solid var(--line); background:var(--surface); color:var(--ink2); font-size:13.5px; font-weight:620; }
 .yearchip.on{ border-color:var(--wine); background:var(--wine); color:#fff; }
+
+/* réception */
+.recv-row{ display:flex; align-items:center; gap:12px; padding:12px 14px; }
+.recv-row .qty{ font-size:11.5px; font-weight:640; color:var(--brass); background:var(--brass-soft); padding:2px 8px; border-radius:99px; display:inline-block; margin-top:3px; }
+.recv-btn{ flex-shrink:0; display:flex; align-items:center; gap:6px; padding:9px 14px; border-radius:11px; border:1px solid var(--wine); background:var(--wine); color:#fff; font-size:13px; font-weight:620; }
+.recv-btn:disabled{ opacity:.55; }
+.recv-btn.done{ border-color:var(--line); background:var(--surface); color:var(--good); }
 
 /* login screen */
 .login{ height:100%; display:flex; flex-direction:column; justify-content:space-between;
@@ -383,6 +395,21 @@ async function supaInsert(table, body){
     throw new Error(r.status + ' ' + t);
   }
 }
+async function supaUpdate(table, id, body){
+  await ensureFresh();
+  let r = await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${id}`, { method:'PATCH', headers:{ ...authHeaders(true), Prefer:'return=minimal' }, body: JSON.stringify(body) });
+  if (r.status === 401 && await refreshSession()){
+    r = await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${id}`, { method:'PATCH', headers:{ ...authHeaders(true), Prefer:'return=minimal' }, body: JSON.stringify(body) });
+  }
+  if (!r.ok){
+    const t = (await r.text()).slice(0,200);
+    if (r.status === 401 || r.status === 403) throw new Error('Connexion requise (droits insuffisants). ' + t);
+    throw new Error(r.status + ' ' + t);
+  }
+}
+async function markWineReceivedLive(id){
+  await supaUpdate('wines', id, { livre: true });
+}
 async function loadCellar(){
   const [wRows, tRows] = await Promise.all([
     supaSelect('wines', 'select=*'),
@@ -432,7 +459,7 @@ async function addTastingLive(f){
   await supaInsert('tastings', body);
 }
 window.CAVE_LIVE = {
-  loadCellar, addWineLive, addTastingLive, regionOf,
+  loadCellar, addWineLive, addTastingLive, markWineReceivedLive, regionOf,
   signIn, loadSession, clearSession, hasSession,
   get email(){ return SESSION && SESSION.email; },
 };
@@ -505,6 +532,8 @@ function Icon({ name, size=24, color='currentColor', stroke=1.7, style }){
     spark: <g {...p}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.4 2.4M15.3 15.3l2.4 2.4M17.7 6.3l-2.4 2.4M8.7 15.3l-2.4 2.4"/></g>,
     logout: <g {...p}><path d="M14 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8"/><path d="M17 8l4 4-4 4M9 12h12"/></g>,
     eye: <g {...p}><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.6"/></g>,
+    check: <g {...p}><path d="M5 13l4.5 4.5L19 7"/></g>,
+    box: <g {...p}><path d="M3.5 8.2 12 4l8.5 4.2v8L12 20.4l-8.5-4.2Z"/><path d="M3.5 8.2 12 12l8.5-4.2M12 12v8.4"/></g>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" style={{ display:'block', flexShrink:0, ...style }}>{paths[name]}</svg>;
 }
@@ -1379,6 +1408,63 @@ function PrimeursScreen(){
   );
 }
 
+/* ---------------- Réception (mark primeur deliveries as received) ---------------- */
+function ReceptionScreen({ onReceive }){
+  const pending = WINES.filter(w=>w.statut==='livrer');
+  const years = [...new Set(pending.map(w=>w.livraison).filter(y=>y!=null))].sort((a,b)=>a-b);
+  const noYear = pending.filter(w=>w.livraison==null);
+  const [year, setYear] = useState(years.length ? years[0] : null);
+  const [busyId, setBusyId] = useState(null);
+  const activeYear = years.includes(year) ? year : (years[0] ?? null);
+  const list = (activeYear==null ? noYear : pending.filter(w=>w.livraison===activeYear));
+  const totalBtl = list.reduce((s,w)=>s+w.btl+w.mag,0);
+
+  const receive = (w)=>{
+    setBusyId(w.id);
+    onReceive(w).finally(()=>setBusyId(null));
+  };
+
+  return (
+    <div>
+      <div className="hd"><div><div className="eyebrow">Livraisons</div><h1 className="serif">Réception</h1></div></div>
+
+      {pending.length===0 ? (
+        <div style={{padding:'0 20px'}}>
+          <div className="empty-note">Aucune livraison en attente — tout est en cave.</div>
+        </div>
+      ) : (
+        <React.Fragment>
+          <div className="chips" style={{flexWrap:'nowrap', overflowX:'auto'}}>
+            {years.map(y=><button key={y} className={"yearchip"+(y===activeYear?" on":"")} onClick={()=>setYear(y)}>{y}</button>)}
+            {noYear.length>0 && <button className={"yearchip"+(activeYear==null?" on":"")} onClick={()=>setYear(null)}>Sans année</button>}
+          </div>
+          <div style={{padding:'0 20px 10px', fontSize:12.5, color:'var(--ink3)'}}>
+            <b style={{color:'var(--ink2)'}}>{list.length}</b> vin{list.length>1?'s':''} en attente · {totalBtl} bouteilles
+          </div>
+          <div style={{padding:'0 14px'}}>
+            <div className="listcard" style={{margin:0}}>
+              {list.map((w,i,a)=>(
+                <div key={w.id} className="recv-row" style={{borderBottom:i<a.length-1?'1px solid var(--line-soft)':'none'}}>
+                  <span className="colorbar" style={{background:COLOR_HEX[w.color]}} />
+                  <span style={{flex:1, minWidth:0}}>
+                    <div className="dom" style={{fontSize:16}}>{w.domaine}</div>
+                    <div style={{fontSize:12, color:'var(--ink3)'}}>{w.appellation} · {w.mill}</div>
+                    <span className="qty">{w.btl} btl{w.mag?` · ${w.mag} mag`:''}</span>
+                  </span>
+                  <button className="recv-btn" disabled={busyId===w.id} onClick={()=>receive(w)}>
+                    <Icon name="check" size={15} color="#fff" stroke={2.2} />{busyId===w.id?'…':'Reçu'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </React.Fragment>
+      )}
+      <div style={{height:24}} />
+    </div>
+  );
+}
+
 /* ---------------- Plus ---------------- */
 function estimateValue(w){
   const base = w.btl*w.prix + w.mag*(w.prixMag||w.prix*2);
@@ -1408,6 +1494,7 @@ function PlusScreen({ onNav, onAdd, onLogout, email }){
         <div className="card" style={{padding:0, marginBottom:22}}>
           <button className="row" onClick={()=>onNav('valeur')}><span className="ic"><Icon name="coin" size={17} color={C.brass} /></span><span style={{flex:1, minWidth:0}}><div className="t1">Valeur de la cave</div><div className="t2">Estimation et plus-values</div></span><Icon name="chevron" size={16} color={C.ink3} /></button>
           <button className="row" onClick={()=>onNav('primeurs')}><span className="ic"><Icon name="grape" size={17} color={C.wine} /></span><span style={{flex:1, minWidth:0}}><div className="t1">Primeurs</div><div className="t2">Suivi de la campagne en cours</div></span><Icon name="chevron" size={16} color={C.ink3} /></button>
+          <button className="row" onClick={()=>onNav('reception')}><span className="ic"><Icon name="box" size={17} color={C.brass} /></span><span style={{flex:1, minWidth:0}}><div className="t1">Réception</div><div className="t2">Cocher les primeurs livrés en cave</div></span><Icon name="chevron" size={16} color={C.ink3} /></button>
         </div>
 
         <div className="section-label">Actions</div>
@@ -1605,6 +1692,10 @@ function App(){
   const flash = (m)=>{ setToast(m); setTimeout(()=>setToast(''), 2200); };
 
   const reload = ()=> loadLiveCellar().then(()=>setDataV(v=>v+1));
+  const receiveWine = (w)=> CAVE_LIVE.markWineReceivedLive(w._id)
+    .then(()=>reload())
+    .then(()=>flash(`${w.domaine} ${w.mill} marqué reçu`))
+    .catch(e=>flash('Échec : ' + e.message));
 
   useEffect(()=>{
     if (!authed) return;
@@ -1634,6 +1725,7 @@ function App(){
           Connexion à la base impossible — {loadErr}</div>}
         {sub==='valeur' && <React.Fragment><button className="backbtn" onClick={()=>setSub(null)}><Icon name="chevron" size={17} color={C.wine} stroke={2} style={{transform:'rotate(180deg)'}} />Plus</button><ValeurScreen /></React.Fragment>}
         {sub==='primeurs' && <React.Fragment><button className="backbtn" onClick={()=>setSub(null)}><Icon name="chevron" size={17} color={C.wine} stroke={2} style={{transform:'rotate(180deg)'}} />Plus</button><PrimeursScreen /></React.Fragment>}
+        {sub==='reception' && <React.Fragment><button className="backbtn" onClick={()=>setSub(null)}><Icon name="chevron" size={17} color={C.wine} stroke={2} style={{transform:'rotate(180deg)'}} />Plus</button><ReceptionScreen onReceive={receiveWine} /></React.Fragment>}
         {!sub && tab==='cave' && <CaveScreen onOpen={setOpenWine} onAdd={()=>setModal('add')} />}
         {!sub && tab==='boire' && <BoireScreen />}
         {!sub && tab==='historique' && <HistoriqueScreen />}
