@@ -801,6 +801,7 @@ const QB_STEPS = [
   ]},
 ];
 function scoreWine(w, a){
+  if (w.btl+w.mag<=0) return -1;
   if (w.statut==='livrer') return -1;
   const st = windowState(w);
   if (st==='attente') return -1;
