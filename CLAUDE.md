@@ -132,6 +132,7 @@ Column hiding uses `#wineTable th:nth-child(N), #wineTable td:nth-child(N) { dis
 ## To Do
 
 - **Cave YD (mobile) label scanning**: wire up real label-scanning capability directly in the app (`App/Cave-YD-mobile.html`), rather than the manual "Coller depuis Claude" copy/paste flow `index.html` uses. Likely needs a Supabase Edge Function (same pattern as the existing `drinking-window` function — proxy to a Claude model server-side, never call the Anthropic API directly from the browser) that takes a photo and returns parsed wine fields (domaine, appellation, millésime, etc.) to pre-fill the Add Wine form.
+- **Refresh market-price estimates and apogée windows**: `index.html`'s `estimateMarketPrice` `known` dictionary (see "When Adding Features") needs periodic updates with current-vintage/current-year market prices, and each wine's `drink_from`/`drink_to` (apogée) should be periodically re-reviewed — vintages move through their drinking window over time and newly-added wines may have rough/default estimates that deserve a real look once more data or a new campaign is available. Cave YD (mobile)'s `Valeur` screen's own estimate model (`ValeurScreen`'s age/note/region factor formula in `App/Cave-YD-mobile.html`) is a separate, cruder estimate that doesn't share `index.html`'s `known` dictionary — worth reconciling or at least keeping in mind both exist independently.
 
 ## Known Pre-existing Issues (not yet fixed, found incidentally)
 
