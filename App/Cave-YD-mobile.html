@@ -155,9 +155,16 @@ button{ font:inherit; -webkit-appearance:none; appearance:none; }
 .sheet-close{ position:absolute; top:10px; right:14px; width:30px; height:30px; border-radius:50%; background:var(--paper2); border:none; color:var(--ink2); display:flex; align-items:center; justify-content:center; }
 
 /* tab bar — real fix: no hardcoded guess, just actual safe-area, absolute overlay like production */
-.tabbar{ position:absolute; left:0; right:0; bottom:0; z-index:30; display:flex; align-items:flex-start; justify-content:space-around;
-  padding:8px 6px 0; padding-bottom:max(env(safe-area-inset-bottom,0px), 8px);
-  border-top:.5px solid rgba(255,255,255,.55); }
+/* Sits a buffer above the true bottom edge rather than flush with it — iOS's
+   Home Screen web-clip viewport is unreliably short of the real screen height
+   (confirmed hard platform limit, see CLAUDE.md), so nothing can reliably be
+   drawn in that last sliver. Leaving it as plain --paper background instead
+   of the tab bar's own hard-edged glass border makes the seam unnoticeable
+   instead of looking like the bar got cut off. */
+.tabbar{ position:absolute; left:0; right:0; bottom:calc(env(safe-area-inset-bottom,0px) + 14px); z-index:30;
+  display:flex; align-items:flex-start; justify-content:space-around;
+  padding:8px 6px 6px;
+  border-top:.5px solid rgba(255,255,255,.55); border-radius:18px 18px 0 0; }
 .tab{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--ink3); padding:2px 0; }
 .tab.on{ color:var(--wine); }
 .tab span{ font-size:10px; font-weight:560; letter-spacing:-.01em; }
@@ -1611,7 +1618,7 @@ function App(){
 
   return (
     <div className="app">
-      <div className="scroll" style={{paddingBottom:90}} key={dataV}>
+      <div className="scroll" style={{paddingBottom:110}} key={dataV}>
         {loadErr && <div style={{margin:'0 20px 10px', padding:'10px 14px', borderRadius:12, background:'#FBEAE6', color:'#B5562F', fontSize:12.5}}>
           Connexion à la base impossible — {loadErr}</div>}
         {sub==='valeur' && <React.Fragment><button className="backbtn" onClick={()=>setSub(null)}><Icon name="chevron" size={17} color={C.wine} stroke={2} style={{transform:'rotate(180deg)'}} />Plus</button><ValeurScreen /></React.Fragment>}
