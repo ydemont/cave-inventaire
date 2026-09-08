@@ -129,6 +129,10 @@ Column hiding uses `#wineTable th:nth-child(N), #wineTable td:nth-child(N) { dis
 - New Edge Functions: deploy via the Supabase MCP tool (`deploy_edge_function`, project `xhokwnpplbkjtqhjicrs`). Edge functions live at `${SB_URL}/functions/v1/<name>` — do not use `sbFetch` for them (it adds `/rest/v1/` prefix); call with a plain `fetch` including the `apikey` header.
 - New 3D geometry in Cellier 3D: never build an enclosing object as a single closed `BoxGeometry` if the camera needs to see inside it — the opaque front face will completely hide the interior. Build it from individual open panels instead, with a separate transparent material for the side the camera looks through.
 
+## To Do
+
+- **Cave YD (mobile) label scanning**: wire up real label-scanning capability directly in the app (`App/Cave-YD-mobile.html`), rather than the manual "Coller depuis Claude" copy/paste flow `index.html` uses. Likely needs a Supabase Edge Function (same pattern as the existing `drinking-window` function — proxy to a Claude model server-side, never call the Anthropic API directly from the browser) that takes a photo and returns parsed wine fields (domaine, appellation, millésime, etc.) to pre-fill the Add Wine form.
+
 ## Known Pre-existing Issues (not yet fixed, found incidentally)
 
 - `getAccessToken()` can throw `ReferenceError: Cannot access 'authSession' before initialization` on cold load if `loadTastings()` fires before the `let authSession` declaration further down the script executes (TDZ). Harmless in practice (caught and logged), but worth cleaning up — e.g. hoist `let authSession = null;` near the top of the script.

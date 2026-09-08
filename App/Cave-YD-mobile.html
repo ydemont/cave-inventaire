@@ -99,14 +99,11 @@ button{ font:inherit; color:inherit; -webkit-appearance:none; appearance:none; b
 .stat .n{ font-size:25px; font-weight:600; line-height:1; }
 .stat .l{ font-size:10.5px; color:var(--ink3); margin-top:3px; letter-spacing:.03em; text-transform:uppercase; font-weight:600; }
 
-/* search + filter */
+/* search */
 .searchrow{ padding:0 20px; display:flex; gap:9px; align-items:center; }
 .search{ flex:1; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:9px 12px; }
 .search input{ flex:1; min-width:0; border:none; outline:none; background:none; font-size:15px; color:var(--ink); font-family:inherit; }
 .search input::placeholder{ color:var(--ink3); }
-.filterbtn{ position:relative; width:42px; height:40px; border-radius:12px; border:1px solid var(--line); background:var(--surface); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.filterbtn.on{ border-color:var(--wine); background:var(--wine-soft); }
-.filterbtn .badge{ position:absolute; top:-5px; right:-5px; min-width:17px; height:17px; border-radius:99px; background:var(--wine); color:#fff; font-size:10.5px; font-weight:700; display:flex; align-items:center; justify-content:center; padding:0 4px; }
 
 /* chips */
 .chips{ display:flex; flex-wrap:wrap; gap:7px; padding:12px 20px 4px; }
@@ -608,14 +605,11 @@ function WineRow({ w, onClick }){
 
 /* ---------------- Cave screen ---------------- */
 function CaveScreen({ onOpen, onAdd }){
-  const [filters, setFilters] = useState({ statut:'all', color:'all', mill:'all', q:'', sort:'domaine' });
-  const [showFilter, setShowFilter] = useState(false);
+  const [filters, setFilters] = useState({ color:'all', q:'', sort:'domaine' });
   const set = (k,v)=>setFilters(f=>({ ...f, [k]:v }));
 
   let list = WINES.filter(w=>{
-    if (filters.statut!=='all' && w.statut!==filters.statut) return false;
     if (filters.color!=='all' && w.color!==filters.color) return false;
-    if (filters.mill!=='all' && w.mill!==filters.mill) return false;
     if (filters.q && !(`${w.domaine} ${w.appellation}`.toLowerCase().includes(filters.q.toLowerCase()))) return false;
     return true;
   });
@@ -623,8 +617,6 @@ function CaveScreen({ onOpen, onAdd }){
     list.sort((a,b)=> s==='mill' ? (b.mill||0)-(a.mill||0) : s==='prix' ? b.prix-a.prix : s==='note' ? (b.note||0)-(a.note||0) : a.domaine.localeCompare(b.domaine)); }
 
   const nBtl = totalBottles(list);
-  const activeFilters = ['statut','color','mill'].filter(k=>filters[k]!=='all').length;
-  const millesimes = [...new Set(WINES.map(w=>w.mill))].sort((a,b)=>b-a);
   const sortLabel = { domaine:'Domaine', mill:'Millésime', prix:'Prix', note:'Note' }[filters.sort];
 
   return (
@@ -644,14 +636,10 @@ function CaveScreen({ onOpen, onAdd }){
       </div>
 
       <div className="searchrow">
-        <div className="search">
+        <div className="search" style={{flex:1}}>
           <Icon name="search" size={17} color={C.ink3} />
           <input placeholder="Rechercher un château…" value={filters.q} onChange={e=>set('q', e.target.value)} />
         </div>
-        <button className={"filterbtn"+(activeFilters?" on":"")} onClick={()=>setShowFilter(true)}>
-          <Icon name="filter" size={19} color={activeFilters?C.wine:C.ink2} />
-          {activeFilters>0 && <span className="badge">{activeFilters}</span>}
-        </button>
       </div>
 
       <div className="chips">
@@ -671,38 +659,6 @@ function CaveScreen({ onOpen, onAdd }){
         {list.map(w=><WineRow key={w.id} w={w} onClick={()=>onOpen(w)} />)}
         {list.length===0 && <div className="empty-note">Aucun vin trouvé.</div>}
       </div>
-
-      {showFilter && (
-        <React.Fragment>
-          <div className="overlay" onClick={()=>setShowFilter(false)} />
-          <div className="sheet">
-            <div className="grabber" />
-            <div className="sheet-title">Filtres</div>
-            <button className="sheet-close" onClick={()=>setShowFilter(false)}><Icon name="close" size={15} /></button>
-            <div className="sheet-body">
-              <div className="section-label" style={{marginTop:14}}>Statut</div>
-              <div className="chips" style={{padding:'0 0 14px', margin:0}}>
-                {[['all','Tous'],['cave','En cave'],['livrer','À livrer']].map(([v,l])=>
-                  <button key={v} className={"chip"+(filters.statut===v?" on":"")} onClick={()=>set('statut',v)}>{l}</button>)}
-              </div>
-              <div className="section-label">Couleur</div>
-              <div className="chips" style={{padding:'0 0 14px', margin:0}}>
-                {[['all','Toutes'],['rouge','Rouge'],['blanc','Blanc'],['rose','Rosé'],['bulle','Bulles']].map(([v,l])=>
-                  <button key={v} className={"chip"+(filters.color===v?" on":"")} onClick={()=>set('color',v)}>{l}</button>)}
-              </div>
-              <div className="section-label">Millésime</div>
-              <div className="chips" style={{padding:'0 0 8px', margin:0}}>
-                <button className={"chip"+(filters.mill==='all'?" on":"")} onClick={()=>set('mill','all')}>Tous</button>
-                {millesimes.map(m=><button key={m} className={"chip"+(filters.mill===m?" on":"")} onClick={()=>set('mill',m)}>{m}</button>)}
-              </div>
-              <button onClick={()=>setFilters({ statut:'all', color:'all', mill:'all', q:'', sort:filters.sort })}
-                style={{ width:'100%', padding:13, borderRadius:13, border:'1px solid var(--line)', background:'var(--surface)', color:'var(--ink2)', fontSize:15, fontWeight:560, marginTop:8 }}>
-                Réinitialiser les filtres
-              </button>
-            </div>
-          </div>
-        </React.Fragment>
-      )}
     </div>
   );
 }
