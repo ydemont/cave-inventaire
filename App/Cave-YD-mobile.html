@@ -167,12 +167,15 @@ button{ font:inherit; -webkit-appearance:none; appearance:none; }
    of the tab bar's own hard-edged glass border makes the seam unnoticeable
    instead of looking like the bar got cut off. */
 /* position:fixed (not absolute) — anchors to the real browser viewport
-   instead of being clipped inside .app's box, same as .sheet below. */
+   instead of being clipped inside .app's box, same as .sheet below. Flush
+   with the real bottom edge; only env(safe-area-inset-bottom) clears the
+   home indicator, no extra buffer (that was a workaround for the old
+   clipped app-shell, no longer needed now that the page scrolls naturally). */
 .tabbar{ position:fixed; left:0; right:0; max-width:480px; margin:0 auto;
-  bottom:calc(env(safe-area-inset-bottom,0px) + 14px); z-index:30;
+  bottom:0; z-index:30;
   display:flex; align-items:flex-start; justify-content:space-around;
-  padding:8px 6px 6px;
-  border-top:.5px solid rgba(255,255,255,.55); border-radius:18px 18px 0 0; }
+  padding:8px 6px 0; padding-bottom:max(env(safe-area-inset-bottom,0px), 8px);
+  border-top:.5px solid rgba(255,255,255,.55); }
 .tab{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--ink3); padding:2px 0; }
 .tab.on{ color:var(--wine); }
 .tab span{ font-size:10px; font-weight:560; letter-spacing:-.01em; }
@@ -234,7 +237,7 @@ button{ font:inherit; -webkit-appearance:none; appearance:none; }
 .err-msg{ color:#B5562F; font-size:13px; margin-bottom:10px; }
 
 /* toast */
-.toast{ position:fixed; bottom:calc(env(safe-area-inset-bottom,0px) + 96px); left:50%; transform:translateX(-50%); z-index:300;
+.toast{ position:fixed; bottom:calc(env(safe-area-inset-bottom,0px) + 80px); left:50%; transform:translateX(-50%); z-index:300;
   background:rgba(35,25,20,0.92); backdrop-filter:blur(14px) saturate(160%); -webkit-backdrop-filter:blur(14px) saturate(160%);
   color:#fff; padding:12px 20px; border-radius:99px; font-size:14px; font-weight:540; white-space:nowrap; box-shadow:0 6px 24px rgba(0,0,0,0.3); }
 
