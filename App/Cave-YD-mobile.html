@@ -36,7 +36,14 @@
 }
 
 *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body{ height:100%; margin:0; background:var(--paper); overscroll-behavior:none; }
+/* No forced height:100dvh app-shell — iOS's Home Screen web-clip viewport is
+   unreliably shorter than the real screen (confirmed platform limit, see
+   CLAUDE.md), and a height-clipped + overflow:hidden shell inherits that
+   short measurement, cutting content off before the true bottom of the
+   screen. Letting html/body be a normal scrolling document (like a plain
+   webpage) instead means the page just scrolls to its real content height —
+   there's no artificial ceiling for iOS to clip against. */
+html,body{ margin:0; background:var(--paper); }
 body{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
   color:var(--ink); -webkit-font-smoothing:antialiased;
@@ -45,11 +52,10 @@ button{ font:inherit; -webkit-appearance:none; appearance:none; }
 ::selection{ background:var(--wine-soft); }
 .serif{ font-family:"Cormorant Garamond",Georgia,serif; }
 .tnum{ font-variant-numeric:tabular-nums; }
-#root{ height:100dvh; }
 
 .app{
-  height:100%; max-width:480px; margin:0 auto; position:relative;
-  display:flex; flex-direction:column; overflow:hidden; background:var(--paper);
+  min-height:100dvh; max-width:480px; margin:0 auto; position:relative;
+  background:var(--paper);
   border-left:1px solid var(--line); border-right:1px solid var(--line);
 }
 @media (min-width:481px){
@@ -57,8 +63,7 @@ button{ font:inherit; -webkit-appearance:none; appearance:none; }
   .app{ box-shadow:0 8px 40px rgba(35,25,20,0.14); }
 }
 
-.scroll{ flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-top:calc(env(safe-area-inset-top,0px) + 10px); }
-.scroll::-webkit-scrollbar{ display:none; }
+.scroll{ padding-top:calc(env(safe-area-inset-top,0px) + 10px); }
 
 /* editorial header */
 .hd{ padding:8px 20px 14px; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
@@ -161,7 +166,10 @@ button{ font:inherit; -webkit-appearance:none; appearance:none; }
    drawn in that last sliver. Leaving it as plain --paper background instead
    of the tab bar's own hard-edged glass border makes the seam unnoticeable
    instead of looking like the bar got cut off. */
-.tabbar{ position:absolute; left:0; right:0; bottom:calc(env(safe-area-inset-bottom,0px) + 14px); z-index:30;
+/* position:fixed (not absolute) — anchors to the real browser viewport
+   instead of being clipped inside .app's box, same as .sheet below. */
+.tabbar{ position:fixed; left:0; right:0; max-width:480px; margin:0 auto;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 14px); z-index:30;
   display:flex; align-items:flex-start; justify-content:space-around;
   padding:8px 6px 6px;
   border-top:.5px solid rgba(255,255,255,.55); border-radius:18px 18px 0 0; }
@@ -226,7 +234,7 @@ button{ font:inherit; -webkit-appearance:none; appearance:none; }
 .err-msg{ color:#B5562F; font-size:13px; margin-bottom:10px; }
 
 /* toast */
-.toast{ position:absolute; bottom:104px; left:50%; transform:translateX(-50%); z-index:300;
+.toast{ position:fixed; bottom:calc(env(safe-area-inset-bottom,0px) + 96px); left:50%; transform:translateX(-50%); z-index:300;
   background:rgba(35,25,20,0.92); backdrop-filter:blur(14px) saturate(160%); -webkit-backdrop-filter:blur(14px) saturate(160%);
   color:#fff; padding:12px 20px; border-radius:99px; font-size:14px; font-weight:540; white-space:nowrap; box-shadow:0 6px 24px rgba(0,0,0,0.3); }
 
