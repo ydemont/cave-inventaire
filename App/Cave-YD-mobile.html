@@ -263,7 +263,7 @@ button{ font:inherit; color:inherit; -webkit-appearance:none; appearance:none; b
 .c3d-btn{ background:rgba(20,16,13,0.68); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   border:1px solid rgba(169,131,63,0.5); color:#fff; font-size:11.5px; font-weight:620; letter-spacing:0.03em;
   padding:8px 13px; border-radius:99px; }
-.c3d-top{ position:absolute; top:12px; right:12px; z-index:4; display:flex; gap:7px; }
+.c3d-top{ position:absolute; top:60px; right:12px; z-index:4; display:flex; gap:7px; }
 .c3d-nav{ position:absolute; bottom:12px; right:12px; z-index:4; display:flex; flex-direction:column; gap:7px; }
 .c3d-nav button.c3d-btn{ width:38px; height:38px; padding:0; display:flex; align-items:center; justify-content:center; font-size:15px; border-radius:50%; }
 .c3d-popover{ position:absolute; z-index:5; background:var(--surface); border:1px solid var(--brass);
@@ -272,6 +272,24 @@ button{ font:inherit; color:inherit; -webkit-appearance:none; appearance:none; b
 .c3d-popover p{ margin:0 0 8px; font-size:12px; color:var(--ink2); }
 .c3d-popover .c3d-pop-btn{ background:var(--wine); color:#fff; border:none; padding:6px 12px; border-radius:8px; font-size:11.5px; font-weight:640; }
 .c3d-hint{ padding:10px 20px 0; font-family:"Cormorant Garamond",Georgia,serif; font-style:italic; color:var(--ink3); font-size:13px; }
+.c3d-search-wrap{ position:absolute; top:12px; left:12px; right:12px; z-index:6; }
+.c3d-search{ width:100%; box-sizing:border-box; background:rgba(20,16,13,0.68); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  border:1px solid rgba(169,131,63,0.5); color:#fff; font-family:"Cormorant Garamond",Georgia,serif; font-style:italic; font-size:14.5px;
+  padding:9px 13px; border-radius:99px; outline:none; }
+.c3d-search::placeholder{ color:rgba(255,255,255,0.55); }
+.c3d-search-list{ list-style:none; margin:6px 0 0; padding:6px; background:var(--surface); border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.22); max-height:220px; overflow-y:auto; }
+.c3d-search-list li{ padding:9px 10px; border-radius:8px; font-size:13.5px; color:var(--ink); }
+.c3d-search-list li b{ color:var(--wine); }
+.c3d-search-list li span{ display:block; font-size:11px; color:var(--ink3); margin-top:1px; }
+.c3d-located{ position:absolute; left:12px; right:12px; bottom:12px; z-index:5; background:var(--surface);
+  border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,0.22); padding:11px 14px; display:flex; align-items:center; gap:10px; }
+.c3d-located .c3d-loc-info{ flex:1; min-width:0; }
+.c3d-located h4{ margin:0; font-family:"Cormorant Garamond",Georgia,serif; font-size:15.5px; font-weight:600; color:var(--wine);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c3d-located p{ margin:1px 0 0; font-size:11.5px; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c3d-located .c3d-loc-close{ background:var(--paper2); border:none; width:26px; height:26px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--ink2); }
 
 @media (prefers-reduced-motion:no-preference){
   .sheet{ animation:sheetUp .28s cubic-bezier(.2,.8,.2,1); }
@@ -1939,6 +1957,10 @@ function Cellier3DScreen({ onOpen }){
   const [loading, setLoading] = useState(true);
   const [doorOpen, setDoorOpen] = useState(false);
   const [popover, setPopover] = useState(null); // { wineId, x, y }
+  const [locateQuery, setLocateQuery] = useState('');
+  const [locateOpen, setLocateOpen] = useState(false);
+  const [locatedWine, setLocatedWine] = useState(null);
+  const [locateMsg, setLocateMsg] = useState('');
   const focusedShelfRef = useRef(3);
 
   useEffect(()=>{
@@ -2165,6 +2187,59 @@ function Cellier3DScreen({ onOpen }){
     BABYLON.Animation.CreateAndStartAnimation('camFocusY', s.camera, 'target.y', 30, 15, s.camera.target.y, y, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
   };
 
+  const placedWines = ()=> WINES.filter(w=>w.shelf && ((w.btl||0)+(w.mag||0))>0);
+  const locateResults = locateQuery.trim()
+    ? placedWines().filter(w=>`${w.domaine} ${w.appellation} ${w.mill}`.toLowerCase().includes(locateQuery.trim().toLowerCase())).slice(0,8)
+    : [];
+
+  const clearLocateHalos = ()=>{
+    const s = sceneRef.current; if (!s) return;
+    (s.locateMarkers||[]).forEach(m=>m.dispose());
+    s.locateMarkers = [];
+  };
+
+  const locateWine = (w)=>{
+    const s = sceneRef.current; if (!s) return;
+    clearLocateHalos();
+    const matches = s.instances.filter(i=>i.metadata && i.metadata.wineId === w._id);
+    if (!matches.length){
+      setLocatedWine(null);
+      setLocateMsg('Ce vin n’est pas placé sur une étagère.');
+      return;
+    }
+    setLocateMsg('');
+    const color = BABYLON.Color3.FromHexString('#ffd76b');
+    const markers = matches.map(inst=>{
+      const halo = BABYLON.MeshBuilder.CreateCylinder('locateHalo', { diameter: s.bodyRadius*2*1.7, height: s.bottleLen*1.08, tessellation:16 }, s.scene);
+      halo.rotation.x = Math.PI/2; halo.rotation.y = inst.rotation.y;
+      halo.position.copyFrom(inst.position); halo.scaling.copyFrom(inst.scaling);
+      halo.isPickable = false;
+      const haloMat = new BABYLON.StandardMaterial('locateHaloMat', s.scene);
+      haloMat.emissiveColor = color; haloMat.diffuseColor = BABYLON.Color3.Black();
+      haloMat.alpha = 0.4; haloMat.backFaceCulling = false;
+      halo.material = haloMat;
+      const base = halo.scaling.clone();
+      const pulse = new BABYLON.Animation('haloPulse', 'scaling', 30, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
+      pulse.setKeys([{ frame:0, value:base }, { frame:20, value:base.scale(1.18) }, { frame:40, value:base }]);
+      halo.animations = [pulse];
+      s.scene.beginAnimation(halo, 0, 40, true);
+      return halo;
+    });
+    s.locateMarkers = markers;
+    const first = matches[0];
+    BABYLON.Animation.CreateAndStartAnimation('camLocateTarget', s.camera, 'target', 30, 20, s.camera.target.clone(), first.position.clone(), BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+    BABYLON.Animation.CreateAndStartAnimation('camLocateRadius', s.camera, 'radius', 30, 20, s.camera.radius, 0.9, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+    setLocatedWine(w);
+    setPopover(null);
+    setLocateOpen(false);
+    setLocateQuery(`${w.domaine}${w.mill ? ' ' + w.mill : ''}`);
+  };
+
+  const dismissLocated = ()=>{
+    clearLocateHalos();
+    setLocatedWine(null);
+  };
+
   const popWine = popover ? WINES.find(w=>w._id === popover.wineId) : null;
 
   return (
@@ -2172,6 +2247,27 @@ function Cellier3DScreen({ onOpen }){
       <div className="hd"><div><div className="eyebrow">Visite virtuelle</div><h1 className="serif">Cellier<em>3D</em></h1></div></div>
       <div className="c3d-wrap" ref={wrapRef}>
         {loading && <div className="c3d-loading"><div className="spinner" /><div>Chargement de la scène 3D…</div></div>}
+        <div className="c3d-search-wrap">
+          <input className="c3d-search" placeholder="Rechercher un vin…" value={locateQuery}
+            onChange={e=>{ setLocateQuery(e.target.value); setLocateOpen(true); setLocateMsg(''); }}
+            onFocus={()=>setLocateOpen(true)}
+            onBlur={()=>setTimeout(()=>setLocateOpen(false), 150)}
+            onKeyDown={e=>{ if (e.key==='Enter' && locateResults.length) locateWine(locateResults[0]); if (e.key==='Escape') setLocateOpen(false); }} />
+          {locateOpen && locateResults.length > 0 && (
+            <ul className="c3d-search-list">
+              {locateResults.map(w=>(
+                <li key={w.id} onClick={()=>locateWine(w)}>
+                  <b>{w.domaine}</b>{w.mill ? ' ' + w.mill : ''}
+                  <span>{w.appellation} · étagère {w.shelf}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {locateOpen && locateQuery.trim() && locateResults.length === 0 && (
+            <ul className="c3d-search-list"><li style={{color:'var(--ink3)', fontStyle:'italic'}}>Aucun vin placé trouvé.</li></ul>
+          )}
+          {locateMsg && <ul className="c3d-search-list"><li style={{color:C.warn}}>{locateMsg}</li></ul>}
+        </div>
         <div className="c3d-top">
           <button className="c3d-btn" onClick={toggleDoor}>{doorOpen ? 'Fermer la porte' : 'Ouvrir la porte'}</button>
           <button className="c3d-btn" onClick={resetView}>Réinitialiser</button>
@@ -2189,6 +2285,16 @@ function Cellier3DScreen({ onOpen }){
             <h4>{popWine.domaine} {popWine.mill||''}</h4>
             <p>{popWine.appellation} · {popWine.btl||0} btl, {popWine.mag||0} mag restants</p>
             <button className="c3d-pop-btn" onClick={()=>{ onOpen(popWine); setPopover(null); }}>Voir la fiche</button>
+          </div>
+        )}
+        {locatedWine && (
+          <div className="c3d-located">
+            <span className="c3d-loc-info">
+              <h4>{locatedWine.domaine} {locatedWine.mill||''}</h4>
+              <p>{locatedWine.appellation} · étagère {locatedWine.shelf}</p>
+            </span>
+            <button className="c3d-pop-btn" onClick={()=>{ onOpen(locatedWine); }}>Voir la fiche</button>
+            <button className="c3d-loc-close" onClick={dismissLocated}><Icon name="close" size={14} color={C.ink2} /></button>
           </div>
         )}
       </div>
