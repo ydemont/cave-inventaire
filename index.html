@@ -4486,7 +4486,7 @@ function generateRecommendations() {
 }
 
 // ── VALUE TRACKER ──────────────────────────────────────────────────────────
-const VALUE_VERSION = 'v8';
+const VALUE_VERSION = 'v9';
 let valueCache = {};
 
 function getQuarterLabel() {
@@ -4593,86 +4593,86 @@ function estimateMarketPrice(w) {
   // For domains with multiple wines (e.g. Louis Jadot), a second lookup uses the first
   // word of the vin name as a disambiguator: `dom_vinPart_vintage`.
   const known = {
-    // ── Refreshed septembre 2026 — prix marché (wine-searcher / en primeur / retail CH, converti CHF) ──
+    // ── Refreshed septembre 2026 (v9) — prix marché (wine-searcher / en primeur / retail, converti CHF) ──
     // ── 2015-2018 spot — vins matures ──────────────────────────────────────
-    'de meursault_2015': 68,          // Meursault Le Limozin — 11 ans, plateau
+    'de meursault_2015': 75,          // Meursault Le Limozin — 11 ans, proche du plateau
     'de meursault_2018': 27,          // Bourgogne régional — 8 ans, à boire
-    'moillard-grivot_2018': 50,       // Meursault négociant — 8 ans
-    'la serre_2017': 54,              // Saint-Émilion Grand Cru Classé — 9 ans, déjà délicieux
-    'sociando-mallet_2017': 42, 'sociando mallet_2017': 42, // Haut-Médoc — 9 ans
-    'sociando-mallet_2015': 40, 'sociando mallet_2015': 40, // Haut-Médoc, millésime 2015
-    'chasse-spleen_2015': 46, 'chasse spleen_2015': 46, // Moulis — 11 ans, milieu de plateau
-    'malartic-lagravière_2017': 60, 'malartic-lagraviere_2017': 60, // Pessac-Léognan GCC — 9 ans
-    'gazin_2016': 100,                // Pomerol — millésime 2016 excellent, 10 ans
-    'siaurac_2016': 25,               // Lalande-de-Pomerol — 10 ans
-    'tour de pressac_2016': 32,       // Saint-Émilion Grand Cru — 10 ans, plateau
-    'lilian ladouys_2017': 25,        // Saint-Estèphe — 9 ans, dans la fenêtre
+    'moillard-grivot_2018': 58,       // Meursault négociant — 8 ans
+    'la serre_2017': 58,              // Saint-Émilion Grand Cru Classé — 9 ans, déjà délicieux
+    'sociando-mallet_2017': 52, 'sociando mallet_2017': 52, // Haut-Médoc — 9 ans, encore besoin d'une décennie
+    'sociando-mallet_2015': 45, 'sociando mallet_2015': 45, // Haut-Médoc, millésime 2015
+    'chasse-spleen_2015': 28, 'chasse spleen_2015': 28, // Moulis — 11 ans
+    'malartic-lagravière_2017': 68, 'malartic-lagraviere_2017': 68, // Pessac-Léognan GCC — 9 ans
+    'gazin_2016': 113,                // Pomerol — millésime 2016 excellent, 10 ans
+    'siaurac_2016': 27,               // Lalande-de-Pomerol — 10 ans
+    'tour de pressac_2016': 36,       // Saint-Émilion Grand Cru — 10 ans
+    'lilian ladouys_2017': 30,        // Saint-Estèphe — 9 ans, dans la fenêtre
     // ── 2020-2021 — livrés, quelques années de marché ──────────────────────
-    'jean-françois jacouton_2020': 35, 'jean-francois jacouton_2020': 35, // Saint-Joseph — 6 ans
-    'mangot_2021': 28,
-    'haut-brisson_2021': 27,
-    'tour saint christophe_2021': 31,
-    'clos floridène_2021': 22, 'clos floridene_2021': 22,
-    'langoa barton_2021': 38,
-    'siaurac_2021': 22,
-    'sociando-mallet_2021': 32, 'sociando mallet_2021': 32,
-    'larrivet haut-brion_2021': 39, 'larrivet haut brion_2021': 39,
-    'famille perrin_2022': 11,        // Côtes du Rhône Nature — style frais, à boire jeune
+    'jean-françois jacouton_2020': 45, 'jean-francois jacouton_2020': 45, // Saint-Joseph — 6 ans
+    'mangot_2021': 52,
+    'haut-brisson_2021': 28,
+    'tour saint christophe_2021': 29,
+    'clos floridène_2021': 20, 'clos floridene_2021': 20,
+    'langoa barton_2021': 40,
+    'siaurac_2021': 23,
+    'sociando-mallet_2021': 41, 'sociando mallet_2021': 41,
+    'larrivet haut-brion_2021': 42, 'larrivet haut brion_2021': 42,
+    'famille perrin_2022': 13,        // Côtes du Rhône Nature — style frais, à boire jeune
     // ── 2022 — livrés, millésime exceptionnel ──────────────────────────────
-    'haut veyrac_2022': 30,
+    'haut veyrac_2022': 31,
     'larrivet haut-brion_2022': 40, 'larrivet haut brion_2022': 40,
-    'tronquoy_2022': 32,
-    'chasse-spleen_2022': 44, 'chasse spleen_2022': 44,
-    'alcée_2022': 20, 'alcee_2022': 20,
-    'cantemerle_2022': 36,
-    'laroque_2022': 37,
+    'tronquoy_2022': 34,
+    'chasse-spleen_2022': 43, 'chasse spleen_2022': 43,
+    'alcée_2022': 22, 'alcee_2022': 22,
+    'cantemerle_2022': 38,
+    'laroque_2022': 39,
     'la clef de voûte_2022': 20, 'la clef de voute_2022': 20,
-    'la mauriane_2022': 22,
-    'prieuré-lichine_2022': 44, 'prieure-lichine_2022': 44,
-    'les hauts-conseillants_2022': 26, 'les hauts conseillants_2022': 26,
+    'la mauriane_2022': 26,
+    'prieuré-lichine_2022': 54, 'prieure-lichine_2022': 54,
+    'les hauts-conseillants_2022': 32, 'les hauts conseillants_2022': 32,
     // ── 2023 — livrés ou en cours de livraison ─────────────────────────────
-    'les gravières_2023': 20, 'gravières_2023': 20,
-    'lilian ladouys_2023': 19,
-    'chasse-spleen_2023': 38, 'chasse spleen_2023': 38,
-    'mangot_2023': 33,
-    'lafont-rochet_2023': 41, 'lafont rochet_2023': 41,
-    'prieuré-lichine_2023': 31, 'prieure-lichine_2023': 31,
-    'sociando-mallet_2023': 32, 'sociando mallet_2023': 32,
-    'larrivet haut-brion_2023': 29, 'larrivet haut brion_2023': 29,
-    'la gaffelière_2023': 50, 'gaffelière_2023': 50, 'gaffeliere_2023': 50,
-    'gazin_2023': 59,
-    'les carmes haut-brion_2023': 104, 'carmes haut-brion_2023': 104, 'carmes haut brion_2023': 104,
+    'les gravières_2023': 25, 'gravières_2023': 25,
+    'lilian ladouys_2023': 20,
+    'chasse-spleen_2023': 36, 'chasse spleen_2023': 36,
+    'mangot_2023': 28,
+    'lafont-rochet_2023': 56, 'lafont rochet_2023': 56,
+    'prieuré-lichine_2023': 47, 'prieure-lichine_2023': 47,
+    'sociando-mallet_2023': 28, 'sociando mallet_2023': 28,
+    'larrivet haut-brion_2023': 33, 'larrivet haut brion_2023': 33,
+    'la gaffelière_2023': 56, 'gaffelière_2023': 56, 'gaffeliere_2023': 56,
+    'gazin_2023': 69,
+    'les carmes haut-brion_2023': 121, 'carmes haut-brion_2023': 121, 'carmes haut brion_2023': 121,
     // ── 2024 primeurs — livraison 2027 ─────────────────────────────────────
-    'chasse-spleen_2024': 33, 'chasse spleen_2024': 33,
-    'sociando-mallet_2024': 25, 'sociando mallet_2024': 25,
-    'les carmes haut-brion_2024': 80, 'carmes haut-brion_2024': 80, 'carmes haut brion_2024': 80,
-    'prieuré-lichine_2024': 27, 'prieure-lichine_2024': 27,
-    'brown_2024': 22,
-    'chevalier_2024': 46,
-    'grand-puy-lacoste_2024': 50, 'grand puy lacoste_2024': 50,
+    'chasse-spleen_2024': 27, 'chasse spleen_2024': 27,
+    'sociando-mallet_2024': 26, 'sociando mallet_2024': 26,
+    'les carmes haut-brion_2024': 78, 'carmes haut-brion_2024': 78, 'carmes haut brion_2024': 78,
+    'prieuré-lichine_2024': 29, 'prieure-lichine_2024': 29,
+    'brown_2024': 23,
+    'chevalier_2024': 48,
+    'grand-puy-lacoste_2024': 53, 'grand puy lacoste_2024': 53,
     'larrivet haut-brion_2024': 30, 'larrivet haut brion_2024': 30,
-    'mangot_2024': 27,
-    'gazin_2024': 54,
-    'moulin de la gardette_2024': 36, // Gigondas, cuvée Tradition
+    'mangot_2024': 30,
+    'gazin_2024': 56,
+    'moulin de la gardette_2024': 42, // Gigondas, cuvée Tradition
     // ── 2025 primeurs — livraison 2028, prix en primeur / marché précoce ──
-    'cantemerle_2025': 27,
-    'gruaud larose_2025': 57,
-    'haut-bages libéral_2025': 34, 'haut-bages liberal_2025': 34,
-    'langoa barton_2025': 38,
-    'malescot saint-exupéry_2025': 37, 'malescot saint-exupery_2025': 37,
-    'haut-brisson_2025': 21,
+    'cantemerle_2025': 28,
+    'gruaud larose_2025': 60,
+    'haut-bages libéral_2025': 38, 'haut-bages liberal_2025': 38,
+    'langoa barton_2025': 40,
+    'malescot saint-exupéry_2025': 38, 'malescot saint-exupery_2025': 38,
+    'haut-brisson_2025': 24,
     'laroque_2025': 24,
-    'larrivet haut-brion_2025': 31, 'larrivet haut brion_2025': 31,
+    'larrivet haut-brion_2025': 32, 'larrivet haut brion_2025': 32,
     'mangot_2025': 27,
     'sociando-mallet_2025': 27, 'sociando mallet_2025': 27,
-    'gazin_2025': 56,
-    'clos floridène_2025': 15, 'clos floridene_2025': 15,
+    'gazin_2025': 54,
+    'clos floridène_2025': 18, 'clos floridene_2025': 18,
     'vieux château saint-andré_2025': 18, 'vieux chateau saint-andre_2025': 18,
     // ── Bourgogne Louis Jadot 2023 — clé longue dom_vinPart_vintage ───────
     // (la clé courte dom_vintage est ambiguë pour ce domaine multi-cuvées)
     'domaine louis jadot_savigny_2023': 45,
-    'domaine louis jadot_santenay_2023': 42,
-    'domaine louis jadot_monthélie_2023': 40, 'domaine louis jadot_monthelie_2023': 40,
+    'domaine louis jadot_santenay_2023': 50,
+    'domaine louis jadot_monthélie_2023': 48, 'domaine louis jadot_monthelie_2023': 48,
   };
 
   // Try domain+firstWordOfVin+vintage first (disambiguates multi-cuvée domains)
