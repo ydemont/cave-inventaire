@@ -888,6 +888,8 @@ tbody tr:hover td.actions { opacity: 1; }
 }
 .log-del { background: none; border: none; color: var(--muted-soft); cursor: pointer; font-size: 11px; padding: 0 4px; transition: color 0.15s; }
 .log-del:hover { color: var(--red-alert); }
+.log-edit { background: none; border: none; color: var(--muted-soft); cursor: pointer; font-size: 11px; padding: 0 4px; transition: color 0.15s; }
+.log-edit:hover { color: var(--gold); }
 
 /* Wizard */
 .wizard-step { display: none; }
@@ -3055,7 +3057,7 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
     </div>
     <div class="form-actions">
       <button class="btn btn-cancel" onclick="document.getElementById('drinkOverlay').classList.remove('open')">Annuler</button>
-      <button class="btn btn-save" onclick="saveDrink()">Enregistrer</button>
+      <button class="btn btn-save" id="d_save_btn" onclick="saveDrink()">Enregistrer</button>
     </div>
 
     <!-- Past tastings for this wine -->
@@ -3766,6 +3768,7 @@ function showPage(name) {
 let tastings = {};
 let drinkWineId = null;
 let drinkRating = 0;
+let editingTastingIdx = null; // index into tastings[drinkWineId] when editing an existing entry, else null
 
 // Tastings are stored in Supabase — loaded on demand per wine
 
@@ -3790,6 +3793,11 @@ async function saveTasting(wineId, entry) {
 
 async function deleteTastingFromDb(id) {
   await sbFetch('tastings?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+}
+
+async function updateTastingInDb(id, entry) {
+  const row = { date: entry.date, rating: entry.rating, note: entry.note, format: entry.format, qty: entry.qty };
+  await sbFetch('tastings?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(row) });
 }
 
 function saveTastings() { /* no-op — saved per operation */ }
@@ -3893,6 +3901,8 @@ function computeShelfOccupancy(shelfNum, excludeWineId) {
 function openDrink(id) {
   drinkWineId = id;
   drinkRating = 0;
+  editingTastingIdx = null;
+  document.getElementById('d_save_btn').textContent = 'Enregistrer';
   const w = wines.find(x => x.id === id);
   document.getElementById('drinkTitle').textContent = w.domaine;
   document.getElementById('drinkSub').textContent = `${w.vin} · ${w.millesime}`;
@@ -3906,6 +3916,25 @@ function openDrink(id) {
   updateStars(0);
   updateDrinkQtyLabel();
   renderDrinkLog(id);
+  document.getElementById('drinkOverlay').classList.add('open');
+}
+
+function editTasting(wineId, idx) {
+  const entry = (tastings[wineId] || [])[idx];
+  if (!entry) return;
+  drinkWineId = wineId;
+  editingTastingIdx = idx;
+  const w = wines.find(x => x.id === wineId);
+  document.getElementById('drinkTitle').textContent = w.domaine;
+  document.getElementById('drinkSub').textContent = `${w.vin} · ${w.millesime}`;
+  document.getElementById('d_date').value = entry.date;
+  document.getElementById('d_note').value = entry.note || '';
+  document.getElementById('d_qty').value = entry.qty || 1;
+  document.getElementById('d_format').value = entry.format === 'magnum' ? 'magnum' : 'bouteille';
+  updateStars(entry.rating || 0);
+  updateDrinkQtyLabel();
+  renderDrinkLog(wineId);
+  document.getElementById('d_save_btn').textContent = 'Mettre à jour';
   document.getElementById('drinkOverlay').classList.add('open');
 }
 
@@ -3964,9 +3993,8 @@ async function saveDrink() {
   const fmt = document.getElementById('d_format').value;
   const qty = Math.max(1, parseInt(document.getElementById('d_qty').value) || 1);
 
-  // Warn if over stock
   const w = wines.find(x => x.id === drinkWineId);
-  const drunk = tastings[drinkWineId] || [];
+  const drunk = (tastings[drinkWineId] || []).filter((t, i) => i !== editingTastingIdx);
   if (fmt === 'magnum') {
     const drunkMag = drunk.filter(t => t.format === 'magnum').reduce((s,t) => s+(t.qty||1), 0);
     if (drunkMag + qty > (w.magnums||0)) {
@@ -3979,18 +4007,34 @@ async function saveDrink() {
     }
   }
 
-  if (!tastings[drinkWineId]) tastings[drinkWineId] = [];
-  const entry = { date, rating: drinkRating, note, format: fmt, qty };
-  try {
-    const newId = await saveTasting(drinkWineId, entry);
-    if (newId) entry.id = newId;
-  } catch(e) { console.error('saveTasting error:', e); }
-  tastings[drinkWineId].push(entry);
-  tastings[drinkWineId].sort((a,b) => b.date.localeCompare(a.date));
-  renderDrinkLog(drinkWineId);
-  updateStockInfo();
-  render();
-  toast(`${qty} ${fmt === 'magnum' ? 'magnum' : 'bouteille'}${qty>1?'s':''} enregistré${qty>1?'s':''} 🍷`);
+  if (editingTastingIdx !== null) {
+    const existing = tastings[drinkWineId][editingTastingIdx];
+    const entry = { ...existing, date, rating: drinkRating, note, format: fmt, qty };
+    try {
+      if (entry.id) await updateTastingInDb(entry.id, entry);
+    } catch(e) { console.error('updateTasting error:', e); }
+    tastings[drinkWineId][editingTastingIdx] = entry;
+    tastings[drinkWineId].sort((a,b) => b.date.localeCompare(a.date));
+    editingTastingIdx = null;
+    document.getElementById('d_save_btn').textContent = 'Enregistrer';
+    renderDrinkLog(drinkWineId);
+    updateStockInfo();
+    render();
+    toast('Dégustation mise à jour 🍷');
+  } else {
+    if (!tastings[drinkWineId]) tastings[drinkWineId] = [];
+    const entry = { date, rating: drinkRating, note, format: fmt, qty };
+    try {
+      const newId = await saveTasting(drinkWineId, entry);
+      if (newId) entry.id = newId;
+    } catch(e) { console.error('saveTasting error:', e); }
+    tastings[drinkWineId].push(entry);
+    tastings[drinkWineId].sort((a,b) => b.date.localeCompare(a.date));
+    renderDrinkLog(drinkWineId);
+    updateStockInfo();
+    render();
+    toast(`${qty} ${fmt === 'magnum' ? 'magnum' : 'bouteille'}${qty>1?'s':''} enregistré${qty>1?'s':''} 🍷`);
+  }
   document.getElementById('d_date').value = new Date().toISOString().split('T')[0];
   document.getElementById('d_note').value = '';
   document.getElementById('d_qty').value = 1;
@@ -4004,6 +4048,14 @@ async function deleteTasting(wineId, idx) {
   }
   tastings[wineId].splice(idx, 1);
   if (!tastings[wineId].length) delete tastings[wineId];
+  if (wineId === drinkWineId && editingTastingIdx !== null) {
+    if (idx === editingTastingIdx) {
+      editingTastingIdx = null;
+      document.getElementById('d_save_btn').textContent = 'Enregistrer';
+    } else if (idx < editingTastingIdx) {
+      editingTastingIdx--;
+    }
+  }
   renderDrinkLog(wineId);
   render();
 }
@@ -4034,6 +4086,7 @@ function renderDrinkLog(wineId) {
           <span class="log-stars" style="color:var(--gold)">${starsHtml(t.rating||0)}</span>
           <span style="font-size:0.65rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase">${fmtLabel}</span>
         </span>
+        <button class="log-edit" onclick="editTasting(${wineId},${i})" title="Modifier">✎</button>
         <button class="log-del" onclick="deleteTasting(${wineId},${i})">✕</button>
         ${t.note ? `<span class="log-note">${esc(t.note)}</span>` : ''}
       </div>`;

@@ -456,6 +456,10 @@ async function supaUpdate(table, id, body){
 async function markWineReceivedLive(id){
   await supaUpdate('wines', id, { livre: true });
 }
+async function getWineRaw(id){
+  const rows = await supaSelect('wines', `id=eq.${id}&select=*`);
+  return rows && rows[0];
+}
 async function loadCellar(){
   const [wRows, tRows] = await Promise.all([
     supaSelect('wines', 'select=*'),
@@ -493,6 +497,27 @@ async function addWineLive(f){
   };
   await supaInsert('wines', body);
 }
+// Only PATCHes the fields AddWine's edit form actually exposes — deliberately
+// leaves out prix_magnum/note/critic_*/shelf/slot_col/slot_row (no UI control
+// for them here) so editing a wine from the phone can't silently wipe a value
+// that was only ever set from index.html or the critic research pass.
+async function updateWineLive(id, f){
+  const body = {
+    date: f.achat || null,
+    domaine: (f.domaine||'').trim(),
+    vin: (f.appellation||'').trim(),
+    millesime: f.mill ? Number(f.mill) : null,
+    bouteilles: Number(f.btl)||0,
+    magnums: Number(f.mag)||0,
+    prix_bouteille: Number(f.prix)||0,
+    livraison: f.livraison ? Number(f.livraison) : null,
+    livre: f.statut !== 'livrer',
+    drink_from: f.boireDe ? Number(f.boireDe) : null,
+    drink_to: f.boireA ? Number(f.boireA) : null,
+    type: f.type === 'primeur' ? 'primeur' : 'spot',
+  };
+  await supaUpdate('wines', id, body);
+}
 async function addTastingLive(f){
   const body = {
     wine_id: f.wineId,
@@ -505,7 +530,7 @@ async function addTastingLive(f){
   await supaInsert('tastings', body);
 }
 window.CAVE_LIVE = {
-  loadCellar, addWineLive, addTastingLive, markWineReceivedLive, regionOf,
+  loadCellar, addWineLive, updateWineLive, getWineRaw, addTastingLive, markWineReceivedLive, regionOf,
   signIn, loadSession, clearSession, hasSession,
   get email(){ return SESSION && SESSION.email; },
 };
@@ -661,6 +686,7 @@ function Icon({ name, size=24, color='currentColor', stroke=1.7, style }){
     </g>,
     camera: <g {...p}><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-2h7l1 2h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z"/><circle cx="12" cy="13" r="3.4"/></g>,
     cube: <g {...p}><path d="M12 3.5 20 8v8l-8 4.5L4 16V8l8-4.5Z"/><path d="M4 8l8 4.5L20 8M12 12.5V21"/></g>,
+    edit: <g {...p}><path d="M4 20l.7-3.5L15.4 6.1a1.5 1.5 0 0 1 2.1 0l1.4 1.4a1.5 1.5 0 0 1 0 2.1L8.3 19.3 4 20Z"/><path d="M13.8 7.7l2.5 2.5"/></g>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" style={{ display:'block', flexShrink:0, ...style }}>{paths[name]}</svg>;
 }
@@ -890,7 +916,7 @@ function Stat({ label, value, accent=C.ink }){
 }
 
 /* ---------------- wine detail sheet ---------------- */
-function WineSheet({ wine: w, onClose, onLog }){
+function WineSheet({ wine: w, onClose, onLog, onEdit }){
   const [criticOpen, setCriticOpen] = useState(false);
   if (!w) return null;
   const lineValue = w.btl*w.prix + w.mag*(w.prixMag||w.prix*2);
@@ -969,9 +995,9 @@ function WineSheet({ wine: w, onClose, onLog }){
                 fontSize:14.5, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:7,
                 boxShadow:'0 2px 10px rgba(110,31,43,0.28)' }}>
                 <Icon name="glass" size={17} color="#fff" /> Logger une dégustation</button>
-              <button style={{ width:46, borderRadius:13, border:'1px solid var(--line)', background:'var(--surface)',
+              <button onClick={()=>onEdit(w)} title="Modifier" style={{ width:46, borderRadius:13, border:'1px solid var(--line)', background:'var(--surface)',
                 display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <Icon name="book" size={18} color={C.ink2} /></button>
+                <Icon name="edit" size={18} color={C.ink2} /></button>
             </div>
           </div>
         </div>
@@ -1791,18 +1817,49 @@ async function fileToResizedJpegBase64(file, maxDim=1100, quality=0.82){
   return canvas.toDataURL('image/jpeg', quality).split(',')[1];
 }
 
-function AddWine({ onClose, onSaved }){
+function AddWine({ wine, onClose, onSaved }){
+  const isEdit = !!wine;
   const [f, setF] = useState({ domaine:'', appellation:'', mill:'', achat:'', btl:'6', mag:'0', prix:'', type:'spot', statut:'cave', boireDe:'', boireA:'', livraison:'' });
+  const [loadingWine, setLoadingWine] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg] = useState('');
   const fileRef = useRef(null);
   const set = (k,v)=>setF(s=>({ ...s, [k]:v }));
+  useEffect(()=>{
+    if (!isEdit) return;
+    let cancelled = false;
+    // Fetch the raw DB row rather than trusting the in-memory wine object:
+    // WINES holds btl/mag already reduced by logged tastings (remaining
+    // stock for display), but the wines.bouteilles/magnums columns store the
+    // original purchased total — prefilling from the reduced numbers would
+    // silently shrink that total every time a wine with tastings is edited.
+    CAVE_LIVE.getWineRaw(wine._id).then(r=>{
+      if (cancelled || !r) return;
+      setF({
+        domaine: r.domaine || '',
+        appellation: r.vin || '',
+        mill: r.millesime != null ? String(r.millesime) : '',
+        achat: r.date ? String(r.date).slice(0,10) : '',
+        btl: String(r.bouteilles ?? 0),
+        mag: String(r.magnums ?? 0),
+        prix: r.prix_bouteille != null ? String(r.prix_bouteille) : '',
+        type: r.type === 'primeur' ? 'primeur' : 'spot',
+        statut: r.livre ? 'cave' : 'livrer',
+        boireDe: r.drink_from != null ? String(r.drink_from) : '',
+        boireA: r.drink_to != null ? String(r.drink_to) : '',
+        livraison: r.livraison != null ? String(r.livraison) : '',
+      });
+      setLoadingWine(false);
+    }).catch(e=>{ setErr('Échec du chargement. ' + e.message); setLoadingWine(false); });
+    return ()=>{ cancelled = true; };
+  }, [isEdit, wine]);
   const save = ()=>{
     if (!f.domaine.trim() || !f.mill){ setErr('Domaine et millésime sont requis.'); return; }
     setErr(''); setSaving(true);
-    CAVE_LIVE.addWineLive(f).then(()=>onSaved())
+    const p = isEdit ? CAVE_LIVE.updateWineLive(wine._id, f) : CAVE_LIVE.addWineLive(f);
+    p.then(()=>onSaved())
       .catch(e=>{ setErr('Échec de l’enregistrement. ' + e.message); setSaving(false); });
   };
   const handleScan = async (e)=>{
@@ -1840,9 +1897,13 @@ function AddWine({ onClose, onSaved }){
       <div className="overlay" onClick={onClose} />
       <div className="sheet" style={{maxHeight:'92dvh'}}>
         <div className="grabber" />
-        <div className="sheet-title">Ajouter un vin</div>
+        <div className="sheet-title">{isEdit ? 'Modifier le vin' : 'Ajouter un vin'}</div>
         <button className="sheet-close" onClick={onClose}><Icon name="close" size={15} color={C.ink2} stroke={2} /></button>
+        {loadingWine ? (
+          <div style={{ padding:'40px 0', display:'flex', justifyContent:'center' }}><div className="spinner" /></div>
+        ) : (
         <div className="sheet-body">
+          {!isEdit && <React.Fragment>
           <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleScan} />
           <button onClick={()=>fileRef.current.click()} disabled={scanning} className="card" style={{
             width:'100%', padding:'12px 14px', marginBottom:14, display:'flex', alignItems:'center', gap:12,
@@ -1857,6 +1918,7 @@ function AddWine({ onClose, onSaved }){
             </div>
           </button>
           {scanMsg && <div style={{ fontSize:11.5, color:C.ink3, marginBottom:12, marginTop:-6 }}>{scanMsg}</div>}
+          </React.Fragment>}
           <Field label="Domaine" req><input className="finput" value={f.domaine} onChange={e=>set('domaine',e.target.value)} placeholder="Château…" /></Field>
           <Field label="Appellation"><input className="finput" value={f.appellation} onChange={e=>set('appellation',e.target.value)} placeholder="Pauillac…" /></Field>
           <div className="finput-row">
@@ -1876,8 +1938,10 @@ function AddWine({ onClose, onSaved }){
           <Field label="Type"><Segmented options={[{value:'primeur',label:'En primeur'},{value:'spot',label:'Achat spot'}]} value={f.type} onChange={v=>set('type',v)} /></Field>
           <Field label="Statut"><Segmented options={[{value:'cave',label:'En cave'},{value:'livrer',label:'À livrer'}]} value={f.statut} onChange={v=>set('statut',v)} /></Field>
           {err && <div className="err-msg">{err}</div>}
-          <button className="primary-btn" style={{opacity:saving?.6:1}} disabled={saving} onClick={save}>{saving?'Enregistrement…':'Enregistrer'}</button>
+          <button className="primary-btn" style={{opacity:saving?.6:1}} disabled={saving} onClick={save}>
+            {saving ? 'Enregistrement…' : (isEdit ? 'Mettre à jour' : 'Enregistrer')}</button>
         </div>
+        )}
       </div>
     </React.Fragment>
   );
@@ -2312,7 +2376,7 @@ function App(){
   const [tab, setTab] = useState('cave');
   const [sub, setSub] = useState(null); // null | 'valeur' | 'primeurs' — reached from Plus
   const [openWine, setOpenWine] = useState(null);
-  const [modal, setModal] = useState(null); // 'add' | { log: wine }
+  const [modal, setModal] = useState(null); // 'add' | { log: wine } | { edit: wine }
   const [toast, setToast] = useState('');
   const activeBar = sub ? 'plus' : tab;
   const nav = (id)=>{ setSub(null); setTab(id); };
@@ -2363,9 +2427,11 @@ function App(){
       </div>
       <TabBar active={activeBar} onNav={nav} />
       {openWine && <WineSheet wine={openWine} onClose={()=>setOpenWine(null)}
-        onLog={(w)=>{ setOpenWine(null); setTimeout(()=>setModal({log:w}),120); }} />}
+        onLog={(w)=>{ setOpenWine(null); setTimeout(()=>setModal({log:w}),120); }}
+        onEdit={(w)=>{ setOpenWine(null); setTimeout(()=>setModal({edit:w}),120); }} />}
       {modal==='add' && <AddWine onClose={()=>setModal(null)} onSaved={()=>{ setModal(null); reload(); flash('Vin ajouté à la cave'); }} />}
       {modal && modal.log && <LogTasting w={modal.log} onClose={()=>setModal(null)} onSaved={()=>{ setModal(null); reload(); flash('Dégustation enregistrée'); }} />}
+      {modal && modal.edit && <AddWine wine={modal.edit} onClose={()=>setModal(null)} onSaved={()=>{ setModal(null); reload(); flash('Vin mis à jour'); }} />}
       <Toast msg={toast} />
     </div>
   );
