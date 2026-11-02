@@ -2319,6 +2319,7 @@ tbody tr:nth-child(n+11) { animation-delay:0.22s; }
           <option value="">Tous les statuts</option>
           <option value="cellar">En cave</option>
           <option value="pending">À livrer</option>
+          <option value="empty">Épuisés</option>
         </select>
         <select id="filterMillesime" onchange="render()">
           <option value="">Tous les millésimes</option>
@@ -3279,6 +3280,12 @@ function getFiltered() {
   return wines.filter(w => {
     const text = `${w.domaine} ${w.vin} ${w.millesime} ${w.note}`.toLowerCase();
     if (q && !text.includes(q)) return false;
+    // Fully-drunk wines are hidden from the list unless "Épuisés" is selected
+    // (the only way back to them to edit/delete — tastings history stays intact).
+    const drunk = getDrunkCount(w.id);
+    const empty = (w.bouteilles||0) - drunk.btl <= 0 && (w.magnums||0) - drunk.mag <= 0;
+    if (fStatus === 'empty') { if (!empty) return false; }
+    else if (empty) return false;
     if (fStatus === 'cellar' && !w.livre) return false;
     if (fStatus === 'pending' && w.livre) return false;
     if (fMill && String(w.millesime) !== fMill) return false;
@@ -3676,7 +3683,8 @@ function confirmDelete(id) {
   deleteId = id;
   const w = wines.find(x => x.id === id);
   document.getElementById('confirmMsg').textContent =
-    `Supprimer "${w?.domaine} ${w?.millesime}" ?`;
+    `Supprimer "${w?.domaine} ${w?.millesime}" ?` +
+    ((tastings[id]||[]).length ? ` Ses ${tastings[id].length} dégustation(s) seront aussi supprimées.` : '');
   document.getElementById('confirmOverlay').classList.add('open');
 }
 
@@ -3689,6 +3697,7 @@ async function doDelete() {
   try {
     await deleteWineFromDb(deleteId);
     wines = wines.filter(w => w.id !== deleteId);
+    delete tastings[deleteId]; // DB cascades tastings on wine delete
     save(); closeConfirm(); render(); updateStats();
     toast('Vin supprimé ✓');
   } catch(e) {

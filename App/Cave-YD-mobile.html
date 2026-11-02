@@ -453,6 +453,22 @@ async function supaUpdate(table, id, body){
     throw new Error(r.status + ' ' + t);
   }
 }
+async function supaDelete(table, id){
+  await ensureFresh();
+  let r = await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${id}`, { method:'DELETE', headers:{ ...authHeaders(true), Prefer:'return=minimal' } });
+  if (r.status === 401 && await refreshSession()){
+    r = await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${id}`, { method:'DELETE', headers:{ ...authHeaders(true), Prefer:'return=minimal' } });
+  }
+  if (!r.ok){
+    const t = (await r.text()).slice(0,200);
+    if (r.status === 401 || r.status === 403) throw new Error('Connexion requise (droits insuffisants). ' + t);
+    throw new Error(r.status + ' ' + t);
+  }
+}
+// tastings.wine_id is ON DELETE CASCADE — deleting a wine also deletes its tasting history.
+async function deleteWineLive(id){
+  await supaDelete('wines', id);
+}
 async function markWineReceivedLive(id){
   await supaUpdate('wines', id, { livre: true });
 }
@@ -530,7 +546,7 @@ async function addTastingLive(f){
   await supaInsert('tastings', body);
 }
 window.CAVE_LIVE = {
-  loadCellar, addWineLive, updateWineLive, getWineRaw, addTastingLive, markWineReceivedLive, regionOf,
+  loadCellar, addWineLive, updateWineLive, deleteWineLive, getWineRaw, addTastingLive, markWineReceivedLive, regionOf,
   signIn, loadSession, clearSession, hasSession,
   get email(){ return SESSION && SESSION.email; },
 };
@@ -766,7 +782,12 @@ function CaveScreen({ onOpen, onAdd }){
   const set = (k,v)=>setFilters(f=>({ ...f, [k]:v }));
 
   let list = WINES.filter(w=>{
-    if (filters.statut!=='all' && w.statut!==filters.statut) return false;
+    // Wines with no remaining bottles (all drunk) are hidden unless the
+    // "Épuisés" chip is picked — that's the only way back to edit/delete them.
+    const empty = (w.btl||0)+(w.mag||0) <= 0;
+    if (filters.statut==='epuise') { if (!empty) return false; }
+    else if (empty) return false;
+    else if (filters.statut!=='all' && w.statut!==filters.statut) return false;
     if (filters.color!=='all' && w.color!==filters.color) return false;
     if (filters.mill!=='all' && w.mill!==filters.mill) return false;
     if (filters.q && !(`${w.domaine} ${w.appellation}`.toLowerCase().includes(filters.q.toLowerCase()))) return false;
@@ -829,7 +850,7 @@ function CaveScreen({ onOpen, onAdd }){
             <div className="sheet-body">
               <div className="section-label" style={{marginTop:14}}>Statut</div>
               <div className="chips" style={{padding:'0 0 14px', margin:0}}>
-                {[['all','Tous'],['cave','En cave'],['livrer','À livrer']].map(([v,l])=>
+                {[['all','Tous'],['cave','En cave'],['livrer','À livrer'],['epuise','Épuisés']].map(([v,l])=>
                   <button key={v} className={"chip"+(filters.statut===v?" on":"")} onClick={()=>set('statut',v)}>{l}</button>)}
               </div>
               <div className="section-label">Couleur</div>
@@ -1822,6 +1843,7 @@ function AddWine({ wine, onClose, onSaved }){
   const [f, setF] = useState({ domaine:'', appellation:'', mill:'', achat:'', btl:'6', mag:'0', prix:'', type:'spot', statut:'cave', boireDe:'', boireA:'', livraison:'' });
   const [loadingWine, setLoadingWine] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
   const [err, setErr] = useState('');
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg] = useState('');
@@ -1861,6 +1883,13 @@ function AddWine({ wine, onClose, onSaved }){
     const p = isEdit ? CAVE_LIVE.updateWineLive(wine._id, f) : CAVE_LIVE.addWineLive(f);
     p.then(()=>onSaved())
       .catch(e=>{ setErr('Échec de l’enregistrement. ' + e.message); setSaving(false); });
+  };
+  const remove = ()=>{
+    if (!confirmDel){ setConfirmDel(true); return; }
+    setErr(''); setSaving(true);
+    CAVE_LIVE.deleteWineLive(wine._id)
+      .then(()=>onSaved(true))
+      .catch(e=>{ setErr('Échec de la suppression. ' + e.message); setSaving(false); setConfirmDel(false); });
   };
   const handleScan = async (e)=>{
     const file = e.target.files && e.target.files[0];
@@ -1940,6 +1969,18 @@ function AddWine({ wine, onClose, onSaved }){
           {err && <div className="err-msg">{err}</div>}
           <button className="primary-btn" style={{opacity:saving?.6:1}} disabled={saving} onClick={save}>
             {saving ? 'Enregistrement…' : (isEdit ? 'Mettre à jour' : 'Enregistrer')}</button>
+          {isEdit && (
+            <React.Fragment>
+              {confirmDel && <div style={{fontSize:13, color:C.ink2, textAlign:'center', marginTop:14, lineHeight:1.4}}>
+                Supprimer définitivement ce vin ? Ses dégustations seront aussi supprimées.</div>}
+              <button disabled={saving} onClick={remove}
+                style={{ width:'100%', padding:13, borderRadius:13, border:`1px solid ${C.wine}`, background: confirmDel ? C.wine : 'transparent',
+                  color: confirmDel ? '#fff' : C.wine, fontSize:15, fontWeight:600, marginTop:10, opacity:saving?.6:1 }}>
+                {confirmDel ? 'Confirmer la suppression' : 'Supprimer ce vin'}</button>
+              {confirmDel && <button disabled={saving} onClick={()=>setConfirmDel(false)}
+                style={{ width:'100%', padding:11, border:'none', background:'transparent', color:C.ink3, fontSize:14, marginTop:4 }}>Annuler</button>}
+            </React.Fragment>
+          )}
         </div>
         )}
       </div>
@@ -2431,7 +2472,7 @@ function App(){
         onEdit={(w)=>{ setOpenWine(null); setTimeout(()=>setModal({edit:w}),120); }} />}
       {modal==='add' && <AddWine onClose={()=>setModal(null)} onSaved={()=>{ setModal(null); reload(); flash('Vin ajouté à la cave'); }} />}
       {modal && modal.log && <LogTasting w={modal.log} onClose={()=>setModal(null)} onSaved={()=>{ setModal(null); reload(); flash('Dégustation enregistrée'); }} />}
-      {modal && modal.edit && <AddWine wine={modal.edit} onClose={()=>setModal(null)} onSaved={()=>{ setModal(null); reload(); flash('Vin mis à jour'); }} />}
+      {modal && modal.edit && <AddWine wine={modal.edit} onClose={()=>setModal(null)} onSaved={(deleted)=>{ setModal(null); reload(); flash(deleted?'Vin supprimé':'Vin mis à jour'); }} />}
       <Toast msg={toast} />
     </div>
   );
