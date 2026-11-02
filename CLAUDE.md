@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > **Session rule:** At the end of every session, update this file to reflect any changes made — new features, architectural decisions, data model changes, Supabase schema updates, or conventions established. Keep it accurate so the next session starts with full context.
 
+> **Never commit or push without being asked.** Every push to `main` triggers an automatic Netlify deploy (see "Redeploying — automated"), and Netlify deploys cost money. Make changes locally, then stop and let the user explicitly ask for a commit and, separately, for a push — approval for one commit/push does not carry over to the next.
+
 ## Project Overview
 
 **Cave — Inventaire** is a single-page wine cellar management PWA for a private Bordeaux-focused collection. It is entirely self-contained in one file: `index.html`. There is no build system, no npm, no bundler — just open the file in a browser or serve it statically.
